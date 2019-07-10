@@ -3,7 +3,7 @@
  * @filename  			lcd_spi2_drv.c
  * @breif						Drive LCD based on spi2 commucation interface
  * @version
- *            			11.0    完成基本驱动程序，可以刷屏	mculover666    2019/7/10
+ *            			v1.0    完成基本驱动程序，可以刷屏		mculover666    2019/7/10
  */
 
 #include "lcd_spi2_drv.h"
@@ -11,8 +11,14 @@
 
 #define LCD_TOTAL_BUF_SIZE	(240*240*2)
 #define LCD_Buf_Size 1152
+
 static uint8_t lcd_buf[LCD_Buf_Size];
 
+/**
+ *@brief		LCD控制引脚初始化
+ *@param		none
+ *@retval		none
+*/
 
 static void LCD_GPIO_Init(void)
 {
@@ -43,20 +49,21 @@ static void LCD_GPIO_Init(void)
 		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 		HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 		
-		
+		/* 复位LCD */
     LCD_PWR(0);
     LCD_RST(0);
     HAL_Delay(100);
     LCD_RST(1);
 
-    MX_SPI2_Init();	//初始化SPI2接口
+		/* 初始化SPI2接口 */
+    MX_SPI2_Init();
 }
 
 /**
  * @brief		LCD底层SPI发送数据函数
- * @param   data-数据的起始地址
- * @param   size-发送数据大小
- * @return  void
+ * @param   data —— 数据的起始地址
+ * @param   size —— 发送数据字节数
+ * @return  none
  */
 static void LCD_SPI_Send(uint8_t *data, uint16_t size)
 {
@@ -66,7 +73,7 @@ static void LCD_SPI_Send(uint8_t *data, uint16_t size)
 /**
  * @brief		写命令到LCD
  * @param   cmd —— 需要发送的命令
- * @return  void
+ * @return  none
  */
 static void LCD_Write_Cmd(uint8_t cmd)
 {
@@ -77,7 +84,7 @@ static void LCD_Write_Cmd(uint8_t cmd)
 /**
  * @brief		写数据到LCD
  * @param 	dat —— 需要发送的数据
- * @return  void
+ * @return  none
  */
 static void LCD_Write_Data(uint8_t dat)
 {
@@ -86,12 +93,10 @@ static void LCD_Write_Data(uint8_t dat)
 }
 
 /**
- * 设置数据写入LCD缓存区域
- *
- * @param   x1,y1	起点坐标
- * @param   x2,y2	终点坐标
- *
- * @return  void
+ * @brief		设置数据写入LCD缓存区域
+ * @param   x1,y1	—— 起点坐标
+ * @param   x2,y2	—— 终点坐标
+ * @return  none
  */
 void LCD_Address_Set(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
 {
@@ -110,29 +115,27 @@ void LCD_Address_Set(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
     LCD_Write_Cmd(0x2C);
 }
 /**
- * 打开LCD显示
- * @param   void
- * @return  void
+ * @breif		打开LCD显示背光
+ * @param   none
+ * @return  none
  */
 void LCD_DisplayOn(void)
 {
     LCD_PWR(1);
 }
 /**
- * 关闭LCD显示
- * @param   void
- * @return  void
+ * @brief		关闭LCD显示背光
+ * @param   none
+ * @return  none
  */
 void LCD_DisplayOff(void)
 {
     LCD_PWR(0);
 }
 /**
- * 以一种颜色清空LCD屏
- *
- * @param   color	清屏颜色
- *
- * @return  void
+ * @brief		以一种颜色清空LCD屏
+ * @param   color —— 清屏颜色(16bit)
+ * @return  none
  */
 void LCD_Clear(uint16_t color)
 {
@@ -158,13 +161,13 @@ void LCD_Clear(uint16_t color)
     }
 }
 /**
- * @brief	LCD初始化
- * @param   void
- * @return  void
+ * @brief		LCD初始化
+ * @param   none
+ * @return  none
  */
 void LCD_Init(void)
 {
-    LCD_GPIO_Init();	//硬件接口初始化
+    LCD_GPIO_Init();
 
     HAL_Delay(120);
 	

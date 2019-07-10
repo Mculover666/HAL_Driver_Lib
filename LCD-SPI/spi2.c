@@ -113,9 +113,9 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef* spiHandle)
 } 
 
 /**
- * @brief		SPI2 写入一个字节
- * @param   TxData	要写入的字节
- * @param   size	写入字节大小
+* @brief		SPI2 发送一个字节
+* @param   TxData	要发送的数据
+* @param   size	发送数据的字节大小
  * @return  uint8_t		0:写入成功,其他:写入失败
  */
 uint8_t SPI2_WriteByte(uint8_t *TxData,uint16_t size)
