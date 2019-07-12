@@ -1,9 +1,17 @@
 /**
  * @Copyright 			(c) 2019,mculover666 All rights reserved	
  * @filename  			lcd_spi2_drv.c
- * @breif						Drive LCD based on spi2 commucation interface
+ * @breif				Drive LCD based on spi2 commucation interface
  * @version
  *            			v1.0    完成基本驱动程序，可以刷屏		mculover666    2019/7/10
+ * @note                移植说明（非常重要）：
+ *                      1. LCD_SPI_Send是LCD的底层发送函数，如果是不同的芯片或者SPI接口，使用CubeMX生成初始化代码，
+ *                         先修改此"lcd_spi2_drv.h"的LCD控制引脚宏定义，
+ *                         然后修改LCD_SPI_Send中的内容即可；
+ *                      2. 如果使用的是ST7789V2液晶控制器，但是不同分辨率的屏幕，修改"lcd_spi2_drv.h"中的LCD_Width和LCD_Height宏定义即可；
+ *                      3. LCD_Buf_Size请勿轻易修改，会影响几乎所有的函数，除非你明确的了解后果；
+ *                      4. 此驱动程序需要spi.h和spi.c的支持；
+ *                      4. 其余情况不适配此驱动代码。
  */
 
 #include "lcd_spi2_drv.h"
@@ -22,34 +30,34 @@ static uint8_t lcd_buf[LCD_Buf_Size];
 
 static void LCD_GPIO_Init(void)
 {
-		GPIO_InitTypeDef GPIO_InitStruct = {0};
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-		/* GPIO Ports Clock Enable */
-		__HAL_RCC_GPIOC_CLK_ENABLE();
-		__HAL_RCC_GPIOH_CLK_ENABLE();
-		__HAL_RCC_GPIOB_CLK_ENABLE();
+    /* GPIO Ports Clock Enable */
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOH_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
 
-		/*Configure GPIO pin Output Level */
-		HAL_GPIO_WritePin(LCD_PWR_GPIO_Port, LCD_PWR_Pin, GPIO_PIN_RESET);
+    /*Configure GPIO pin Output Level */
+    HAL_GPIO_WritePin(LCD_PWR_GPIO_Port, LCD_PWR_Pin, GPIO_PIN_RESET);
 
-		/*Configure GPIO pin Output Level */
-		HAL_GPIO_WritePin(GPIOC, LCD_WR_RS_Pin|LCD_RST_Pin, GPIO_PIN_RESET);
+    /*Configure GPIO pin Output Level */
+    HAL_GPIO_WritePin(GPIOC, LCD_WR_RS_Pin|LCD_RST_Pin, GPIO_PIN_RESET);
 
-		/*Configure GPIO pin : PtPin */
-		GPIO_InitStruct.Pin = LCD_PWR_Pin;
-		GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-		GPIO_InitStruct.Pull = GPIO_NOPULL;
-		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-		HAL_GPIO_Init(LCD_PWR_GPIO_Port, &GPIO_InitStruct);
+    /*Configure GPIO pin : PtPin */
+    GPIO_InitStruct.Pin = LCD_PWR_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(LCD_PWR_GPIO_Port, &GPIO_InitStruct);
 
-		/*Configure GPIO pins : PCPin PCPin */
-		GPIO_InitStruct.Pin = LCD_WR_RS_Pin|LCD_RST_Pin;
-		GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-		GPIO_InitStruct.Pull = GPIO_NOPULL;
-		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-		HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-		
-		/* 复位LCD */
+    /*Configure GPIO pins : PCPin PCPin */
+    GPIO_InitStruct.Pin = LCD_WR_RS_Pin|LCD_RST_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+    
+    /* 复位LCD */
     LCD_PWR(0);
     LCD_RST(0);
     HAL_Delay(100);
@@ -60,7 +68,7 @@ static void LCD_GPIO_Init(void)
 }
 
 /**
- * @brief		LCD底层SPI发送数据函数
+ * @brief	LCD底层SPI发送数据函数
  * @param   data —— 数据的起始地址
  * @param   size —— 发送数据字节数
  * @return  none
@@ -71,7 +79,7 @@ static void LCD_SPI_Send(uint8_t *data, uint16_t size)
 }
 
 /**
- * @brief		写命令到LCD
+ * @brief	写命令到LCD
  * @param   cmd —— 需要发送的命令
  * @return  none
  */
@@ -82,7 +90,7 @@ static void LCD_Write_Cmd(uint8_t cmd)
 }
 
 /**
- * @brief		写数据到LCD
+ * @brief	写数据到LCD
  * @param 	dat —— 需要发送的数据
  * @return  none
  */
@@ -93,7 +101,7 @@ static void LCD_Write_Data(uint8_t dat)
 }
 
 /**
- * @brief		设置数据写入LCD缓存区域
+ * @brief	设置数据写入LCD缓存区域
  * @param   x1,y1	—— 起点坐标
  * @param   x2,y2	—— 终点坐标
  * @return  none
@@ -115,7 +123,7 @@ void LCD_Address_Set(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
     LCD_Write_Cmd(0x2C);
 }
 /**
- * @breif		打开LCD显示背光
+ * @breif	打开LCD显示背光
  * @param   none
  * @return  none
  */
@@ -124,7 +132,7 @@ void LCD_DisplayOn(void)
     LCD_PWR(1);
 }
 /**
- * @brief		关闭LCD显示背光
+ * @brief	关闭LCD显示背光
  * @param   none
  * @return  none
  */
@@ -133,7 +141,7 @@ void LCD_DisplayOff(void)
     LCD_PWR(0);
 }
 /**
- * @brief		以一种颜色清空LCD屏
+ * @brief	以一种颜色清空LCD屏
  * @param   color —— 清屏颜色(16bit)
  * @return  none
  */
@@ -161,7 +169,7 @@ void LCD_Clear(uint16_t color)
     }
 }
 /**
- * @brief		LCD初始化
+ * @brief	LCD初始化
  * @param   none
  * @return  none
  */
