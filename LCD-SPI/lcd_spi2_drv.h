@@ -3,7 +3,8 @@
  * @filename  			lcd_spi2_drv.c
  * @breif				Drive LCD based on spi2 commucation interface
  * @version
- *            			v1.0    完成基本驱动程序，可以刷屏		mculover666    2019/7/10
+ *            			v1.0    完成基本驱动程序，可以刷屏		        mculover666    2019/7/10
+ *                      v1.1    添加打点、画线、画矩形、画圆算法实现     mculover666    2019/7/12    
  * @note                移植说明（非常重要）：
  *                      1. LCD_SPI_Send是LCD的底层发送函数，如果是不同的芯片或者SPI接口，使用CubeMX生成初始化代码，
  *                         先修改此"lcd_spi2_drv.h"的LCD控制引脚宏定义，
