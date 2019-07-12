@@ -52,6 +52,10 @@ void LCD_DisplayOn(void);
 void LCD_DisplayOff(void);
 void LCD_Clear(uint16_t color);
 void LCD_Init(void);			//LCD³õÊ¼»¯º¯Êý
-
+void LCD_Draw_ColorPoint(uint16_t x, uint16_t y,uint16_t color);
+void LCD_Draw_ColorLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
+void LCD_Draw_ColorRect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
+void LCD_Draw_ColorCircle(uint16_t x, uint16_t y, uint16_t r, uint16_t color);
+void LCD_Fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
 
 #endif /* _LCD_SPI2_DRV_H_ */
