@@ -1,98 +1,45 @@
-/* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2019 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
-  *
-  ******************************************************************************
-  */
-/* USER CODE END Header */
+ * @Copyright 	(c) 2019,mculover666 All rights reserved	
+ * @filename  	main.c
+ * @breif				测试LCD-SPI驱动程序，提供驱动使用示例
+ * @version
+ *            	v1.0    测试驱动程序，可以刷屏		             mculover666    2019/7/10
+ *              v1.1    测试打点、画线、画矩形、画圆算法实现     mculover666   2019/7/12
+ */
 
-/* Includes ------------------------------------------------------------------*/
 #include "stm32l4xx_hal.h"
 #include "lcd_spi2_drv.h"
 
-
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
-
-/* USER CODE END Includes */
-
-/* Private typedef -----------------------------------------------------------*/
-/* USER CODE BEGIN PTD */
-
-/* USER CODE END PTD */
-
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
-/* USER CODE END PM */
-
-/* Private variables ---------------------------------------------------------*/
-
-/* USER CODE BEGIN PV */
-
-/* USER CODE END PV */
-
-/* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-/* USER CODE BEGIN PFP */
 
-/* USER CODE END PFP */
-
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
-
-/**
-  * @brief  The application entry point.
-  * @retval int
-  */
 int main(void)
 {
 
-  /* MCU Configuration--------------------------------------------------------*/
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
   SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
-  /* USER CODE BEGIN 2 */
-
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
 	LCD_Init();
+
+  /*
+  //以下9行代码是测试画线、画矩形、画圆使用，如非必要，请勿取消注释
+	LCD_Draw_ColorLine(0,120,240,120,RED);		//画水平线
+	LCD_Draw_ColorLine(0,0,240,240,BLUE);	  	//画斜线(从左到右，45°)
+ 	LCD_Draw_ColorLine(0,240,240,0,GREEN);		//画斜线(从右到左，45°)
+	LCD_Draw_ColorLine(120,0,120,240,YELLOW);	//画垂直线
+	LCD_Draw_ColorLine(180,0,60,240,RED);			//画斜线(从左到右，120°)
+	LCD_Draw_ColorLine(60,0,180,240,RED);			//画斜线(从右到左，60°)
+	LCD_Draw_ColorLine(0,60,240,180,RED);			//画斜线(从左到右，180°)
+	LCD_Draw_ColorLine(0,180,240,60,RED);			//画斜线(从左到右，30°)
+	LCD_Draw_ColorRect(60,60,180,180,PINK);		//画矩形
+	LCD_Draw_ColorCircle(120,120,85, GBLUE);	//画圆
+
+  */
+
 	while (1)
   {
+    /* 
+    //以下代码10行代码是测试刷屏使用 
 		LCD_Clear(WHITE);
 		LCD_Clear(YELLOW);
 		LCD_Clear(BRRED);
@@ -104,11 +51,8 @@ int main(void)
 		LCD_Clear(GREEN);
 		LCD_Clear(BLUE);
 		LCD_Clear(BLACK);
-		
-    /* USER CODE END WHILE */
-    /* USER CODE BEGIN 3 */
+    */
   }
-  /* USER CODE END 3 */
 }
 
 /**
@@ -185,5 +129,3 @@ void assert_failed(char *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
