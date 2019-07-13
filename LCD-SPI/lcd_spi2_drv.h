@@ -1,6 +1,6 @@
 /**
  * @Copyright 			(c) 2019,mculover666 All rights reserved	
- * @filename  			lcd_spi2_drv.c
+ * @filename  			lcd_spi2_drv.h
  * @breif				Drive LCD based on spi2 commucation interface
  * @version
  *            			v1.0    完成基本驱动程序，可以刷屏              mculover666    2019/7/10
