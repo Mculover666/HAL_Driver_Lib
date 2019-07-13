@@ -1,20 +1,30 @@
 /**
- * @Copyright 	(c) 2019,mculover666 All rights reserved	
- * @filename  	main.c
- * @breif				测试LCD-SPI驱动程序，提供驱动使用示例
+ * @Copyright 			   (c) 2019,mculover666 All rights reserved	
+ * @filename  			   main.c
+ * @breif				       测试LCD驱动程序
  * @version
- *            	v1.0    测试驱动程序，可以刷屏		             mculover666    2019/7/10
- *              v1.1    测试打点、画线、画矩形、画圆算法实现     mculover666   2019/7/12
+ *            			   v1.0    完成基本驱动程序，可以刷屏              mculover666    2019/7/10
+*                      v1.1    添加打点、画线、画矩形、画圆算法实现     mculover666    2019/7/12
+*                      v1.2    添加显示英文ASCII字符和字符串           mculover666    2019/7/12
+*                      v1.3    添加绘制六芒星函数（基于画线函数）       mculover666    2019/7/12
+*                      v1.4    添加显示图片函数                       mculover666     2019/7/13   
+*                      v2.0    使用宏开关控制字符显示和图片显示         mculover666    2019/7/13  
+ * @note                移植说明（非常重要）：
+ *                      1. LCD_SPI_Send是LCD的底层发送函数，如果是不同的芯片或者SPI接口，使用CubeMX生成初始化代码，
+ *                         先修改此"lcd_spi2_drv.h"的LCD控制引脚宏定义，
+ *                         然后修改LCD_SPI_Send中的内容即可；
+ *                      2. 如果使用的是ST7789V2液晶控制器，但是不同分辨率的屏幕，修改"lcd_spi2_drv.h"中的LCD_Width和LCD_Height宏定义即可；
+ *                      3. LCD_Buf_Size请勿轻易修改，会影响几乎所有的函数，除非你明确的了解后果；
+ *                      4. 此驱动程序需要spi.h和spi.c的支持；
+ *                      4. 其余情况不适配此驱动代码。
  */
 
 #include "stm32l4xx_hal.h"
 #include "lcd_spi2_drv.h"
-/*
-
-//该头文件是图片数据，请在测试图片显示时取消注释
+//该头文件是图片数据，请在测试图片显示时打开USE_PICTURE_DISPLAY宏开关
+#if USE_PICTURE_DISPLAY
 #include "bear.h"   
-
-*/
+#endif /* USE_PICTURE_DISPLAY */
 
 void SystemClock_Config(void);
 

@@ -8,6 +8,7 @@
  *                      v1.2    添加显示英文ASCII字符和字符串           mculover666    2019/7/12
  *                      v1.3    添加绘制六芒星函数（基于画线函数）       mculover666    2019/7/12
  *                      v1.4    添加显示图片函数                       mculover666     2019/7/13   
+ *                      v2.0    使用宏开关控制字符显示和图片显示         mculover666    2019/7/13  
  * @note                移植说明（非常重要）：
  *                      1. LCD_SPI_Send是LCD的底层发送函数，如果是不同的芯片或者SPI接口，使用CubeMX生成初始化代码，
  *                         先修改此"lcd_spi2_drv.h"的LCD控制引脚宏定义，
@@ -20,6 +21,9 @@
 
 #include "lcd_spi2_drv.h"
 #include "spi2.h"
+#if USE_ASCII_FONT_LIB
+#include "font.h"
+#endif /* USE_ASCII_FONT_LIB */
 
 #define LCD_TOTAL_BUF_SIZE	(240*240*2)
 #define LCD_Buf_Size 1152
@@ -519,6 +523,7 @@ void LCD_Fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color
         }
     }
 }
+#if USE_ASCII_FONT_LIB
 /**
  * @brief	显示一个ASCII码字符
  * @param   x,y		显示起始坐标
@@ -646,6 +651,7 @@ void LCD_ShowCharStr(uint16_t x, uint16_t y, uint8_t max_width, char* str, uint1
 			str++;
 	}
 }
+#endif /* USE_ASCII_FONT_LIB */
 /**
  * @breif		带颜色画六芒星函数
  * @param   x,y —— 六芒星中心点
@@ -670,6 +676,7 @@ void LCD_Draw_ColorSixPointStar(uint16_t x, uint16_t y, uint8_t r, uint16_t colo
 
 }
 
+#if USE_PICTURE_DISPLAY
 /**
  * @brief	显示图片函数
  * @param   x,y	    —— 起点坐标
@@ -711,3 +718,4 @@ void LCD_Show_Image(uint16_t x, uint16_t y, uint16_t width, uint16_t height, con
             
     }  
 }
+#endif /*  USE_PICTURE_DISPLAY */
