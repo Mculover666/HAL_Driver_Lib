@@ -4,7 +4,10 @@
  * @breif				Drive LCD based on spi2 commucation interface
  * @version
  *            			v1.0    完成基本驱动程序，可以刷屏              mculover666    2019/7/10
- *                      v1.1    添加打点、画线、画矩形、画圆算法实现     mculover666    2019/7/12    
+ *                      v1.1    添加打点、画线、画矩形、画圆算法实现     mculover666    2019/7/12
+ *                      v1.2    添加显示英文ASCII字符和字符串           mculover666    2019/7/12
+ *                      v1.3    添加绘制六芒星函数（基于画线函数）       mculover666    2019/7/12
+ *                      v1.4    添加显示图片函数                       mculover666     2019/7/13   
  * @note                移植说明（非常重要）：
  *                      1. LCD_SPI_Send是LCD的底层发送函数，如果是不同的芯片或者SPI接口，使用CubeMX生成初始化代码，
  *                         先修改此"lcd_spi2_drv.h"的LCD控制引脚宏定义，
@@ -665,4 +668,46 @@ void LCD_Draw_ColorSixPointStar(uint16_t x, uint16_t y, uint8_t r, uint16_t colo
 		LCD_Draw_ColorLine(x+b,y+a,x,y-r,color);
 		LCD_Draw_ColorLine(x,y-r,x-b,y+a,color);
 
+}
+
+/**
+ * @brief	显示图片函数
+ * @param   x,y	    —— 起点坐标
+ * @param   width	—— 图片宽度
+ * @param   height	—— 图片高度
+ * @param   p       —— 图片缓存数据起始地址
+ * @return  none
+ * @note	Image2Lcd取模方式：C语言数据/水平扫描/16位真彩色(RGB565)/高位在前，其他的不选
+ */
+void LCD_Show_Image(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint8_t *p)
+{
+	uint32_t img_size = width * height * 2;		//图片所占字节数
+	uint32_t remain_size = img_size;		    //图片每次发送后剩余的字节数
+	uint8_t i = 0;
+	
+	/* 错误检测 */
+    if(x + width > LCD_Width || y + height > LCD_Height)
+    {
+        return;
+    }
+				
+    LCD_Address_Set(x, y, x + width - 1, y + height - 1);
+
+    LCD_WR_RS(1);
+
+    /* SPI每次最大发送2^16 = 65536个数据,图片最大大小为240*240*2 = 115200，会超过此大小，所以设计循环发送算法 */
+    for(i = 0;i <= img_size / 65536; i++)
+    {
+        if(remain_size / 65536 >= 1)
+        {
+            LCD_SPI_Send((uint8_t *)p, 65535);
+            p += 65535;
+            remain_size -= 65535;
+        }
+        else
+        {
+            LCD_SPI_Send((uint8_t *)p, remain_size % 65535);
+        }
+            
+    }  
 }

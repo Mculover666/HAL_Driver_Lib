@@ -9,6 +9,12 @@
 
 #include "stm32l4xx_hal.h"
 #include "lcd_spi2_drv.h"
+/*
+
+//该头文件是图片数据，请在测试图片显示时取消注释
+#include "bear.h"   
+
+*/
 
 void SystemClock_Config(void);
 
@@ -36,6 +42,26 @@ int main(void)
 
   */
 
+  /*
+  //以下9行测试12/16/24/32四种字符和字符串显示
+  LCD_ShowChar(6,12,'B',BLACK,YELLOW,16);
+  LCD_ShowChar(14,28,'C',BLACK,GREEN,24);
+  LCD_ShowChar(0,0,'A',BLACK,BLUE,12);
+  LCD_ShowChar(26,52,'D',BLACK,PINK,32);
+  LCD_ShowCharStr(60,240-32-24-24-24,120,"Powerd BY",BLACK,GREEN,24);
+  LCD_ShowCharStr(36,240-32-24-24,150,"HUAWEI LiteOS",BLACK,YELLOW,24);
+  LCD_ShowCharStr(28,240-32-24,176,"Mculover666",BLACK,BLUE,32);
+  LCD_ShowCharStr(12,240-24,240,"Copyright (c) 2019",BLACK,PINK,24);
+  LCD_Draw_ColorSixPointStar(150,65,40,RED);
+  */
+
+  /*
+  //以下2行测试图片显示，需要bear.h头文件的支持
+  LCD_Show_Image(0,0,240,240,gImage_bear);
+	LCD_ShowCharStr(70,240-24,140,"Starting...",WHITE,BLUE,24);
+  
+  
+   */
 	while (1)
   {
     /* 

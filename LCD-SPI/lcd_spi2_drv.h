@@ -6,7 +6,8 @@
  *            			v1.0    完成基本驱动程序，可以刷屏		        mculover666    2019/7/10
  *                      v1.1    添加打点、画线、画矩形、画圆算法实现     mculover666    2019/7/12
  *                      v1.2    添加显示英文ASCII字符和字符串           mculover666    2019/7/12
- *                      v1.3    添加绘制六芒星函数（基于画线函数）       mculover666    2019/7/12    
+ *                      v1.3    添加绘制六芒星函数（基于画线函数）       mculover666    2019/7/12
+ *                      v1.4    添加显示图片函数                       mculover666     2019/7/13      
  * @note                移植说明（非常重要）：
  *                      1. LCD_SPI_Send是LCD的底层发送函数，如果是不同的芯片或者SPI接口，使用CubeMX生成初始化代码，
  *                         先修改此"lcd_spi2_drv.h"的LCD控制引脚宏定义，
@@ -63,5 +64,6 @@ void LCD_Fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color
 void LCD_ShowChar(uint16_t x, uint16_t y, char ch, uint16_t back_color, uint16_t font_color, uint8_t font_size);
 void LCD_ShowCharStr(uint16_t x, uint16_t y, uint8_t max_width, char* str, uint16_t back_color, uint16_t font_color, uint8_t font_size);
 void LCD_Draw_ColorSixPointStar(uint16_t x, uint16_t y, uint8_t r, uint16_t color);
+void LCD_Show_Image(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint8_t *p);
 
 #endif /* _LCD_SPI2_DRV_H_ */
