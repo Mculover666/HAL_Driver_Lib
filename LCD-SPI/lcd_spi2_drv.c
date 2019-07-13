@@ -172,7 +172,7 @@ void LCD_DisplayOff(void)
 void LCD_Clear(uint16_t color)
 {
     uint16_t i, j;
-    uint8_t data[2] = {0};
+    uint8_t data[2] = {0};  //LCD屏幕色彩深度16bit，data[0]是颜色数据的高位，data[1]是颜色数据的低位
 
     data[0] = color >> 8;
     data[1] = color;
@@ -325,7 +325,7 @@ void LCD_Draw_ColorLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint
     int16_t		delta_x = 0, delta_y = 0;
     int8_t		incx = 0, incy = 0;
     uint16_t	distance = 0;
-    uint16_t  t = 0;
+    uint16_t    t = 0;
     uint16_t	x = 0, y = 0;
     uint16_t 	x_temp = 0, y_temp = 0;
 	
@@ -452,7 +452,9 @@ void LCD_Draw_ColorCircle(uint16_t x, uint16_t y, uint16_t r, uint16_t color)
 		
 	/* 如果圆在屏幕可见区域外，直接退出 */
     if (x - r < 0 || x + r > LCD_Width || y - r < 0 || y + r > LCD_Height) 
+    {
 		return;
+    }
 		
 	/* 开始画圆 */
     while(a <= b)
@@ -469,7 +471,9 @@ void LCD_Draw_ColorCircle(uint16_t x, uint16_t y, uint16_t r, uint16_t color)
         a++;
 
         if(d < 0)
+        {
 			d += 4 * a + 6;
+        }
         else
         {
             d += 10 + 4 * (a - b);
