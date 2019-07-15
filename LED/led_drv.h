@@ -11,11 +11,12 @@
 
 #include "stm32l4xx_hal.h"
 
+#define LED_CLK()   __HAL_RCC_GPIOC_CLK_ENABLE();
 #define LED_PORT	GPIOC
 #define	LED_PIN		GPIO_PIN_13
 
 #define LED(n)	 (n?HAL_GPIO_WritePin(LED_PORT, LED_PIN, GPIO_PIN_SET):HAL_GPIO_WritePin(LED_PORT, LED_PIN, GPIO_PIN_RESET));
 
-void LED_init(void);
+void LED_GPIO_init(void);
 
 #endif /* _LED_DRV_H_ */

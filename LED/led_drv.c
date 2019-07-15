@@ -13,13 +13,13 @@
   * @param  None
   * @retval None
   */
-void LED_init(void)
+void LED_GPIO_init(void)
 {
 	
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOC_CLK_ENABLE();
+  LED_CLK();
 
   /*Configure GPIO pin*/
   GPIO_InitStruct.Pin = LED_PIN;
