@@ -1,13 +1,13 @@
 /**********************************************************
- *@file   sgp30.c
+ *@file    sgp30.h
  *@brief
- *        基于STM32 HAL 库的SGP30 甲醛传感器驱动
+ *         基于STM32 HAL 库的SGP30 甲醛传感器驱动
  *
- *@autor  mculover666<2412828003@qq.com>
- *@date   2020/07/23
+ *@author  mculover666<2412828003@qq.com>
+ *@date    2020/07/23
  *@note
- *        1. 驱动默认使用硬件i2c 1
- *        2. 如果不需要打印报错信息，可以去掉printf相关
+ *         1. 驱动默认使用硬件i2c 1
+ *         2. 如果不需要打印报错信息，可以去掉printf相关
 **********************************************************/
 #include "sgp30.h"
 
@@ -23,7 +23,7 @@ static uint8_t sgp30_send_cmd(sgp30_cmd_t cmd)
     uint8_t cmd_buffer[2];
     cmd_buffer[0] = cmd >> 8;
     cmd_buffer[1] = cmd;
-    return HAL_I2C_Master_Transmit(&hi2c1, SGP30_ADDR_WRITE, (uint8_t*) cmd_buffer, 2, 0xFFFF);
+    return HAL_I2C_Master_Transmit(&SGP30_I2C_Handle_Name, SGP30_ADDR_WRITE, (uint8_t*) cmd_buffer, 2, 0xFFFF);
 }
 
 /**
@@ -34,7 +34,7 @@ static uint8_t sgp30_send_cmd(sgp30_cmd_t cmd)
 static int sgp30_soft_reset(void)
 {
     uint8_t cmd = 0x06;
-    return HAL_I2C_Master_Transmit(&hi2c1, 0x00, &cmd, 1, 0xFFFF);
+    return HAL_I2C_Master_Transmit(&SGP30_I2C_Handle_Name, 0x00, &cmd, 1, 0xFFFF);
 }
 
 /**
@@ -107,7 +107,7 @@ static uint8_t CheckCrc8(uint8_t* const message, uint8_t initial_value)
  * @param	none
  * @retval	成功返回0，失败返回-1
 */
-int spg30_read(void)
+int sgp30_read(void)
 {
     int status;
     uint8_t recv_buffer[6]={0};
@@ -122,7 +122,7 @@ int spg30_read(void)
     HAL_Delay(100);
     
     /* 读取测量数据 */
-    status = HAL_I2C_Master_Receive(&hi2c1, SGP30_ADDR_READ, (uint8_t*)recv_buffer, 6, 0xFFFF);
+    status = HAL_I2C_Master_Receive(&SGP30_I2C_Handle_Name, SGP30_ADDR_READ, (uint8_t*)recv_buffer, 6, 0xFFFF);
     if (status != HAL_OK) {
         printf("I2C Master Receive fail\r\n");
         return -1;
