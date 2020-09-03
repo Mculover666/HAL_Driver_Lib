@@ -80,7 +80,7 @@ typedef struct lcd_params_st {
 #define LCD_DAT_ADDR            0x6c000080
 
 /* LCD默认显示方向:0-竖屏，1-横屏 */
-#define LCD_DEFAULT_DISPLAY_DIR 1
+#define LCD_DEFAULT_DISPLAY_DIR 0
 
 /* LCD初始化清屏颜色 */
 #define LCD_DEFAULT_CLEAR_COLOR WHITE
@@ -108,5 +108,6 @@ void lcd_set_window(uint16_t x_pos_start, uint16_t y_pos_start, uint16_t width, 
 void lcd_draw_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
 void lcd_draw_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
 void lcd_draw_circle(uint16_t x, uint16_t y, uint16_t r, uint16_t color);
+void lcd_fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
 
 #endif /* _LCD_FSMC_H_ */

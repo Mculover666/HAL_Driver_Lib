@@ -1868,3 +1868,27 @@ void lcd_draw_circle(uint16_t x, uint16_t y, uint16_t r, uint16_t color)
         lcd_draw_point(x + a, y + b, color);
     }
 }
+
+/**
+ * @breif	LCD填充一个矩形区域
+ * @param   x1 x方向起始坐标
+ * @param   x2 x方向终止坐标
+ * @param   y1 y方向起始坐标
+ * @param   y2 y方向终止坐标
+ * @param	color 颜色
+ * @retval	none
+ */
+void lcd_fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
+{
+    uint16_t i, j;
+    uint32_t xlen = 0;
+    
+    xlen = x2 - x1 + 1;
+    for (i = y1; i <= y2; i++) {
+        lcd_set_cursor(x1, i);
+        lcd_write_ram_start();
+        for (j = 0; j < xlen; j++) {
+            lcd_write_ram(color);
+        }
+    }
+}
