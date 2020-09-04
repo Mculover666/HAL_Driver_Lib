@@ -15,23 +15,18 @@
 lcd_params_t lcd_params;
 
 /**
- * @brief    打开背光
- * @param    none
+ * @brief    背光控制
+ * @param    state 背光状态
  * @retval   none
 */
-void lcd_backlight_on(void)
+void lcd_backlight_ctrl(lcd_backlight_state_t state)
 {
-    HAL_GPIO_WritePin(LCD_BL_GPIO_Port, LCD_BL_Pin, GPIO_PIN_SET);
-}
-
-/**
- * @brief    关闭背光
- * @param    none
- * @retval   none
-*/
-void lcd_backlight_off(void)
-{
-    HAL_GPIO_WritePin(LCD_BL_GPIO_Port, LCD_BL_Pin, GPIO_PIN_RESET);
+    if (state == LCD_BACKLIGHT_ON) {
+        HAL_GPIO_WritePin(LCD_BL_GPIO_Port, LCD_BL_Pin, GPIO_PIN_SET);
+    } else {
+        HAL_GPIO_WritePin(LCD_BL_GPIO_Port, LCD_BL_Pin, GPIO_PIN_RESET);
+    }
+    
 }
 
 /**
@@ -169,7 +164,7 @@ void lcd_display_off(void)
  * @param    dir 扫描方向
  * @retval   none
 */
-void lcd_set_scan_direction(uint8_t dir)
+static void lcd_set_scan_direction(lcd_scan_dir_t dir)
 {
     uint16_t regval = 0;
 	uint16_t dirreg = 0;
@@ -281,9 +276,9 @@ void lcd_set_scan_direction(uint8_t dir)
  * @param    dir 显示方向
  * @retval   none
 */
-void lcd_set_display_drection(uint8_t dir)
+static void lcd_set_display_drection(lcd_display_dir_t dir)
 {
-    if (dir == 0) {
+    if (dir == VERTICAL_DISP) {
         /* 设置竖屏 */
         lcd_params.lcd_direction = 0;
         lcd_params.lcd_width     = LCD_WIDTH;
@@ -1621,7 +1616,7 @@ void lcd_init(void)
 	lcd_clear(LCD_DEFAULT_CLEAR_COLOR);
 
     /* 打开背光 */
-    lcd_backlight_on();
+    lcd_backlight_ctrl(LCD_BACKLIGHT_ON);
     
     return;
 }

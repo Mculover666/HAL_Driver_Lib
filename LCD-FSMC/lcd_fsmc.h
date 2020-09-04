@@ -16,7 +16,7 @@
 #include "fsmc.h"
 
 /**
- * @brief    保存LCD屏幕参数
+ * @brief    LCD屏幕参数
  * @param    lcd_width     LCD屏幕宽度
  * @param    lcd_height    LCD屏幕高度
  * @param    lcd_id        LCD 驱动IC ID
@@ -36,18 +36,39 @@ typedef struct lcd_params_st {
 } lcd_params_t;
 
 /**
- * @brief    LCD扫描方向枚举
+ * @brief    LCD背光状态
+ * @param    LCD_BACKLIGHT_OFF 关闭背光
+ * @param    LCD_BACKLIGHT_ON  打开背光
+*/
+typedef enum lcd_backlight_state_en {
+    LCD_BACKLIGHT_OFF = 0,
+    LCD_BACKLIGHT_ON  = 1,
+} lcd_backlight_state_t;
+
+/**
+ * @brief    LCD扫描方向
  * @note     L-左，R-右，U-上，D-下
 */
-#define L2R_U2D  0
-#define L2R_D2U  1
-#define R2L_U2D  2
-#define R2L_D2U  3
+typedef enum lcd_scan_dir_en {
+    L2R_U2D = 0,
+    L2R_D2U = 1,
+    R2L_U2D = 2,
+    R2L_D2U = 3,
+    U2D_L2R = 4,
+    U2D_R2L = 5,
+    D2U_L2R = 6,
+    D2U_R2L = 7,
+} lcd_scan_dir_t;
 
-#define U2D_L2R  4
-#define U2D_R2L  5
-#define D2U_L2R  6
-#define D2U_R2L  7
+/**
+ * @brief    LCD显示方向
+ * @param    VERTICAL_DISP   竖屏显示
+ * @param    HORIZONTAL_DISP 横屏显示
+*/
+typedef enum lcd_display_dir_en {
+    VERTICAL_DISP   = 0,
+    HORIZONTAL_DISP = 1,
+} lcd_display_dir_t;
 
 #define    BLACK   0x0000    //黑色
 #define    BLUE    0x001F    //蓝色
@@ -76,11 +97,11 @@ typedef struct lcd_params_st {
 #define LCD_BL_Pin              GPIO_PIN_15
 
 /* 通过地址线控制RS引脚 */
-#define LCD_CMD_ADDR            0x6c00007E
+#define LCD_CMD_ADDR            0x6c000040
 #define LCD_DAT_ADDR            0x6c000080
 
-/* LCD默认显示方向:0-竖屏，1-横屏 */
-#define LCD_DEFAULT_DISPLAY_DIR 0
+/* LCD默认显示方向:VERTICAL_DISP-竖屏，HORIZONTAL_DISP-横屏 */
+#define LCD_DEFAULT_DISPLAY_DIR VERTICAL_DISP
 
 /* LCD初始化清屏颜色 */
 #define LCD_DEFAULT_CLEAR_COLOR WHITE
@@ -99,8 +120,7 @@ extern lcd_params_t lcd_params;
 void lcd_init(void);
 void lcd_display_on(void);
 void lcd_display_off(void);
-void lcd_backlight_on(void);
-void lcd_backlight_off(void);
+void lcd_backlight_ctrl(lcd_backlight_state_t state);
 void lcd_clear(uint16_t color);
 
 void lcd_draw_point(uint16_t x_pos, uint16_t y_pos, uint16_t color);
