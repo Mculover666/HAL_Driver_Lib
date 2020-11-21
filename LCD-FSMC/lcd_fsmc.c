@@ -1865,7 +1865,7 @@ void lcd_draw_circle(uint16_t x, uint16_t y, uint16_t r, uint16_t color)
 }
 
 /**
- * @breif	LCD填充一个矩形区域
+ * @breif   LCD填充一个矩形区域
  * @param   x1 x方向起始坐标
  * @param   x2 x方向终止坐标
  * @param   y1 y方向起始坐标
@@ -1873,7 +1873,7 @@ void lcd_draw_circle(uint16_t x, uint16_t y, uint16_t r, uint16_t color)
  * @param	color 颜色
  * @retval	none
  */
-void lcd_fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
+void lcd_fill_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
 {
     uint16_t i, j;
     uint32_t xlen = 0;
@@ -1884,6 +1884,27 @@ void lcd_fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color
         lcd_write_ram_start();
         for (j = 0; j < xlen; j++) {
             lcd_write_ram(color);
+        }
+    }
+}
+
+/**
+ * @breif   LCD填充一个圆形区域
+ * @param   x x方向圆心坐标
+ * @param   y y方向圆心坐标
+ * @param   r 半径
+ * @param	color 颜色
+ * @retval	none
+ */
+void lcd_fill_circle(uint16_t x,uint16_t y,uint16_t r, uint16_t color)
+{
+    uint16_t a,b;
+    
+    for (b = y - r;b < y + r;b++) {
+        for (a= x - r;a < x + r;a++) {
+            if (((a-x) * (a-x) + (b-y) * (b-y)) <= r*r){
+                lcd_draw_point(a, b, color);
+            }
         }
     }
 }
