@@ -9,7 +9,6 @@
 #include <stdio.h>
 
 extern TIM_HandleTypeDef HC_SR04_TIM;
-static uint32_t high_level_time_us;
 
 /**
  * @brief   GPIO and TIM initialization.
@@ -32,7 +31,7 @@ static void HC_SR04_Start(void)
     HAL_GPIO_WritePin(HC_SR04_TRIG_PORT, HC_SR04_TRIG_PIN, GPIO_PIN_SET);
     
     /* maintain high level at least 10us */
-    HC_SR04_Delay_Us(10);
+    CPU_TS_Tmr_Delay_US(10);
     
     /* resume low level */
     HAL_GPIO_WritePin(HC_SR04_TRIG_PORT, HC_SR04_TRIG_PIN, GPIO_PIN_RESET);
@@ -47,53 +46,29 @@ static void HC_SR04_Start(void)
 */
 int HC_SR04_Measure(double *distance_cm)
 {
-    uint32_t timeout_start, timeout_cur;
+    uint32_t tick_us;
     
     HC_SR04_Start();
     
+    __HAL_TIM_SetCounter(&HC_SR04_TIM, 0);
+    
     /* waitting for start of the high level through echo pin */
-    timeout_start = HAL_GetTick();
-    while (HAL_GPIO_ReadPin(HC_SR04_ECHO_PORT, HC_SR04_ECHO_PIN) == GPIO_PIN_RESET) {
-        // timeout check code to avoid blocking
-        timeout_cur = HAL_GetTick();
-        if (timeout_cur - timeout_start > 100) {
-            //100ms timeout
-            return -1;
-        }
-    }
+    while (HAL_GPIO_ReadPin(HC_SR04_ECHO_PORT, HC_SR04_ECHO_PIN) == GPIO_PIN_RESET);
 
     /* start the tim and enable the interrupt */
-    high_level_time_us = 0;
-    HAL_TIM_Base_Start_IT(&HC_SR04_TIM);
+    HAL_TIM_Base_Start(&HC_SR04_TIM);
     
     /* waitting for end of the high level through echo pin */
-    timeout_start = HAL_GetTick();
-    while (HAL_GPIO_ReadPin(HC_SR04_ECHO_PORT, HC_SR04_ECHO_PIN) == GPIO_PIN_SET)
-    {
-        // timeout check code to avoid blocking
-        timeout_cur = HAL_GetTick();
-        if (timeout_cur - timeout_start > 100) {
-            //100ms timeout
-            return -1;
-        }
-    }
+    while (HAL_GPIO_ReadPin(HC_SR04_ECHO_PORT, HC_SR04_ECHO_PIN) == GPIO_PIN_SET);
     
     /* stop the tim */
     HAL_TIM_Base_Stop(&HC_SR04_TIM);
     
+    /* get the time of high level */
+    tick_us = __HAL_TIM_GetCounter(&HC_SR04_TIM);
+    
     /* calc distance in unit cm */
-    *distance_cm = (double)(high_level_time_us/1000000.0) * 340.0 / 2.0 *100.0;
+    *distance_cm = (double)(tick_us/1000000.0) * 340.0 / 2.0 *100.0;
     
      return 0;
-}
-
-/**
- * @brief   Realize the callback function of TIM.
-*/
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* tim_baseHandle)
-{
-	if(tim_baseHandle->Instance == HC_SR04_TIM.Instance)
-    {
-        high_level_time_us++;
-    }
 }

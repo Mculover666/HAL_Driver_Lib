@@ -1,7 +1,7 @@
 #ifndef __CORE_DELAY_H
 #define __CORE_DELAY_H
 
-#include "stm32l4xx.h"
+#include "stm32f1xx.h"
 
 /* 获取内核时钟频率 */
 #define GET_CPU_ClkFreq()       HAL_RCC_GetSysClockFreq()

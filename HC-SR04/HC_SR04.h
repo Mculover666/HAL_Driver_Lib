@@ -8,8 +8,8 @@
 #ifndef _HC_SR04_H_
 #define _HC_SR04_H_
 
-#include "stm32l4xx.h"
-#include "core_delay/core_delay.h"
+#include "stm32f1xx.h"
+#include "core_delay.h"
 
 /* HC-SR04Ä£¿é¿ØÖÆÒý½Å */
 #define HC_SR04_TRIG_PORT       GPIOB
