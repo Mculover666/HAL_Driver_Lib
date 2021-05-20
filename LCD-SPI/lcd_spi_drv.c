@@ -8,7 +8,7 @@
  *                      v2.1    add support for scroll function     mculover666    2021/5/19
  */
 
-#include "lcd_spi2_drv.h"
+#include "lcd_spi_drv.h"
 
 #if USE_ASCII_FONT_LIB
 #include "font.h"
@@ -103,9 +103,9 @@ uint16_t rgb2hex_565(uint16_t r, uint16_t g, uint16_t b)
 }
 
 /**
- * @brief	????????��??LCD????????
- * @param   x1,y1	???? ???????
- * @param   x2,y2	???? ???????
+ * @brief	set lcd display address
+ * @param   x1,y2   start address
+ * @param   x2,y2	end address
  * @return  none
  */
 static void lcd_address_set(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
@@ -126,7 +126,7 @@ static void lcd_address_set(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
 }
 
 /**
- * @breif	??LCD???????
+ * @breif	turn on LCD power.
  * @param   none
  * @return  none
  */
@@ -136,7 +136,7 @@ void lcd_display_on(void)
 }
 
 /**
- * @brief	???LCD???????
+ * @brief	turn off LCD power.
  * @param   none
  * @return  none
  */
@@ -146,8 +146,8 @@ void lcd_display_off(void)
 }
 
 /**
- * @brief	???????????LCD??
- * @param   color ???? ???????(16bit)
+ * @brief	clear LCD with color.
+ * @param   color   LCD color
  * @return  none
  */
 void lcd_clear(uint16_t color)
@@ -161,7 +161,7 @@ void lcd_clear(uint16_t color)
 
     lcd_address_set(0, 0, LCD_Width - 1, LCD_Height - 1);
 
-    for(j = 0; j < LCD_Buf_Size / 2; j++)
+    for(j = 0; j < LCD_BUFFER_SIZE / 2; j++)
     {
         lcd_buf[j * 2] =  data[0];
         lcd_buf[j * 2 + 1] =  data[1];
@@ -169,12 +169,12 @@ void lcd_clear(uint16_t color)
 
     LCD_WR_RS(1);
 
-    for(i = 0; i < (LCD_TOTAL_BUF_SIZE / LCD_Buf_Size); i++)
+    for(i = 0; i < (LCD_TOTAL_BUF_SIZE / LCD_BUFFER_SIZE); i++)
     {
-        spi_write_bytes(lcd_buf, LCD_Buf_Size);
+        spi_write_bytes(lcd_buf, LCD_BUFFER_SIZE);
     }
     
-    remain_size = LCD_TOTAL_BUF_SIZE % LCD_Buf_Size;
+    remain_size = LCD_TOTAL_BUF_SIZE % LCD_BUFFER_SIZE;
     if (remain_size) {
         spi_write_bytes(lcd_buf, remain_size);
     }   
@@ -342,8 +342,9 @@ void lcd_init(void)
 }
 
 /**
- * @brief		???????????
- * @param   x,y	???? ????????
+ * @brief   draw a point with color.
+ * @param   x,y     point address
+ * @param   color   point color
  * @return  none
  */
 void lcd_draw_color_point(uint16_t x, uint16_t y,uint16_t color)
@@ -353,9 +354,10 @@ void lcd_draw_color_point(uint16_t x, uint16_t y,uint16_t color)
 }
 
 /**
- * @brief		????????????(????��??)
- * @param   x1,y1	???????
- * @param   x2,y2	???????
+ * @brief   draw a line with color.
+ * @param   x1,y1   line start address
+ * @param   x2,y2   line end address
+ * @param   color   line color
  * @return  none
  */
 void lcd_draw_color_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
@@ -369,13 +371,10 @@ void lcd_draw_color_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uin
     uint16_t 	x_temp = 0, y_temp = 0;
 	
 
-    if(y1 == y2)
-    {
-        /* ????????? */
+    if (y1 == y2) {
         lcd_address_set(x1, y1, x2, y2);
 
-        for(i = 0; i < x2 - x1; i++)
-        {
+        for(i = 0; i < x2 - x1; i++) {
             lcd_buf[2 * i] = color >> 8;
             lcd_buf[2 * i + 1] = color;
         }
@@ -383,80 +382,45 @@ void lcd_draw_color_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uin
         LCD_WR_RS(1);
         spi_write_bytes(lcd_buf, (x2 - x1) * 2);
         return;
-    }
-    else
-    {
-        /* ??��???Bresenham???? */
-        /* ?????????????x??y????????????????x??y????????? */
+    } else {
         delta_x = x2 - x1;
         delta_y = y2 - y1;
-        if(delta_x > 0)
-        {
-            //��??(??????)
+        if (delta_x > 0) {
             incx = 1;
-        }
-        else if(delta_x == 0)
-        {
-            //???��??(????)
+        } else if (delta_x == 0) {
             incx = 0;
-        }
-        else
-        {
-            //��??(???????)
+        } else {
             incx = -1;
             delta_x = -delta_x;
         }
-        if(delta_y > 0)
-        {
-            //��??(??????)
+        
+        if (delta_y > 0) {
             incy = 1;
-        }
-        else if(delta_y == 0)
-        {
-            //??��??(????)
+        } else if (delta_y == 0) {
             incy = 0;
-        }
-        else
-        {
-            //��??(???????)
+        } else {
             incy = -1;
             delta_y = -delta_y;
         }			
         
-        /* ???????????(?????????��?????) */
-        if(delta_x > delta_y)
-        {
+        if (delta_x > delta_y) {
             distance = delta_x;
-        }
-        else
-        {
+        } else {
             distance = delta_y;
         }
         
-        /* ?????? */
         x = x1;
         y = y1;
-        //?????????��??????t????????
-        for(t = 0; t <= distance + 1;t++)
-        {
-            LCD_Draw_ColorPoint(x, y, color);
-        
-            /* ?��????????????????? */
+        for (t = 0; t <= distance + 1;t++) {
+            lcd_draw_color_point(x, y, color);
             x_temp += delta_x;	
-            if(x_temp > distance)
-            {
-                //x??????��???????????????��???????
+            if (x_temp > distance) {
                 x_temp -= distance;		
-                //??x??????????
                 x += incx;
-                    
             }
             y_temp += delta_y;
-            if(y_temp > distance)
-            {
-                //y??????��???????????????��???????
+            if (y_temp > distance) {
                 y_temp -= distance;
-                //??y??????????
                 y += incy;
             }
         }
@@ -464,70 +428,64 @@ void lcd_draw_color_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uin
 }
 
 /**
- * @breif	??????????��???
- * @param   x1,y1 ???? ?????????
- * @param	x2,y2 ???? ???????
- * @param	color	???? ???
- * @retval	none
+ * @brief   draw a rect with color.
+ * @param   x1,y1   rect start address
+ * @param   x2,y2   rect end address
+ * @param   color   rect color
+ * @return  none
  */
 void lcd_draw_color_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
 {
-    LCD_Draw_ColorLine(x1,y1,x2,y1,color);
-    LCD_Draw_ColorLine(x1,y1,x1,y2,color);
-    LCD_Draw_ColorLine(x1,y2,x2,y2,color);
-    LCD_Draw_ColorLine(x2,y1,x2,y2,color);
+    lcd_draw_color_line(x1, y1, x2, y1, color);
+    lcd_draw_color_line(x1, y1, x1, y2, color);
+    lcd_draw_color_line(x1, y2, x2, y2, color);
+    lcd_draw_color_line(x2, y1, x2, y2, color);
 }
 
 /**
- * @breif	????????????
- * @param   x1,x2 ???? ???????
- * @param	r ???? ??
- * @param	color	???? ???
- * @retval	none
+ * @brief   draw a circle with color.
+ * @param   x,y     center of circle address
+ * @param   r       radius of cirlce
+ * @param   color   circle color
+ * @return  none
  */
 void lcd_draw_color_circle(uint16_t x, uint16_t y, uint16_t r, uint16_t color)
 {
-	/* Bresenham????? */
 	int16_t a = 0, b = r;
-    int16_t d = 3 - (r << 1);		//?????????
+    int16_t d = 3 - (r << 1);
 		
-	/* ???????????????????????? */
-    if (x - r < 0 || x + r > LCD_Width || y - r < 0 || y + r > LCD_Height) 
-    {
+    if (x - r < 0 || x + r > LCD_Width || y - r < 0 || y + r > LCD_Height) {
 		return;
     }
 		
-	/* ?????? */
-    while(a <= b)
-    {
-        LCD_Draw_ColorPoint(x - b, y - a, color);
-        LCD_Draw_ColorPoint(x + b, y - a, color);
-        LCD_Draw_ColorPoint(x - a, y + b, color);
-        LCD_Draw_ColorPoint(x - b, y - a, color);
-        LCD_Draw_ColorPoint(x - a, y - b, color);
-        LCD_Draw_ColorPoint(x + b, y + a, color);
-        LCD_Draw_ColorPoint(x + a, y - b, color);
-        LCD_Draw_ColorPoint(x + a, y + b, color);
-        LCD_Draw_ColorPoint(x - b, y + a, color);
+    while(a <= b) {
+        lcd_draw_color_point(x - b, y - a, color);
+        lcd_draw_color_point(x + b, y - a, color);
+        lcd_draw_color_point(x - a, y + b, color);
+        lcd_draw_color_point(x - b, y - a, color);
+        lcd_draw_color_point(x - a, y - b, color);
+        lcd_draw_color_point(x + b, y + a, color);
+        lcd_draw_color_point(x + a, y - b, color);
+        lcd_draw_color_point(x + a, y + b, color);
+        lcd_draw_color_point(x - b, y + a, color);
         a++;
 
-        if(d < 0)
-        {
+        if (d < 0) {
 			d += 4 * a + 6;
-        }
-        else
-        {
+        } else {
             d += 10 + 4 * (a - b);
             b--;
         }
 
-        LCD_Draw_ColorPoint(x + a, y + b, color);
+        lcd_draw_color_point(x + a, y + b, color);
     }
 }
 
 /**
- * @brief	???????????/??????????????
- * @param   color ???? ???????(16bit)
+ * @brief   fill a rect with color.
+ * @param   x1,y1   rect start address
+ * @param   x2,y2   rect end address
+ * @param   color   rect color
  * @return  none
  */
 void lcd_fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
@@ -537,18 +495,15 @@ void lcd_fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color
 
     size = (x2 - x1 + 1) * (y2 - y1 + 1) * 2;
 
-    if(size > LCD_Buf_Size)
-    {
-        size_remain = size - LCD_Buf_Size;
-        size = LCD_Buf_Size;
+    if (size > LCD_BUFFER_SIZE) {
+        size_remain = size - LCD_BUFFER_SIZE;
+        size = LCD_BUFFER_SIZE;
     }
 
     lcd_address_set(x1, y1, x2, y2);
 
-    while(1)
-    {
-        for(i = 0; i < size / 2; i++)
-        {
+    while (1) {
+        for (i = 0; i < size / 2; i++) {
             lcd_buf[2 * i] = color >> 8;
             lcd_buf[2 * i + 1] = color;
         }
@@ -556,16 +511,13 @@ void lcd_fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color
         LCD_WR_RS(1);
         spi_write_bytes(lcd_buf, size);
 
-        if(size_remain == 0)
+        if (size_remain == 0) {
             break;
-
-        if(size_remain > LCD_Buf_Size)
-        {
-            size_remain = size_remain - LCD_Buf_Size;
         }
 
-        else
-        {
+        if (size_remain > LCD_BUFFER_SIZE) {
+            size_remain = size_remain - LCD_BUFFER_SIZE;
+        } else {
             size = size_remain;
             size_remain = 0;
         }
@@ -574,12 +526,13 @@ void lcd_fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color
 
 #if USE_ASCII_FONT_LIB
 /**
- * @brief	??????ASCII?????
- * @param   x,y		??????????
- * @param   ch		???????????
- * @param   size	?????��(???16/24/32??????)
+ * @brief   display a character with color.
+ * @param   x1,y1       character start address
+ * @param   ch          character
+ * @param   back_color  background color
+ * @param   font_color  front color
+ * @param   font_size   font size of character
  * @return  none
- * @note	???font.h???????????
  */
 void lcd_show_char(uint16_t x, uint16_t y, char ch, uint16_t back_color, uint16_t font_color, uint8_t font_size)
 {
@@ -588,155 +541,131 @@ void lcd_show_char(uint16_t x, uint16_t y, char ch, uint16_t back_color, uint16_
 	uint8_t size = 0;
 	uint8_t t = 0;
 	
-	/* ????????????? */
-	 if((x > (LCD_Width - font_size / 2)) || (y > (LCD_Height - font_size)))	
+	 if ((x > (LCD_Width - font_size / 2)) || (y > (LCD_Height - font_size))) {	
 		 return;
+     }
 	
-	/* ?????????��?????????????? */
-	lcd_address_set(x, y, x + font_size/2 - 1, y + font_size - 1);
+	 lcd_address_set(x, y, x + font_size/2 - 1, y + font_size - 1);
 	 
-	 /* ?????????????��?????*/
 	 ch = ch - ' ';
 	 
-	 /* ???16??/32?????? */
-	 if((font_size == 16) || (font_size == 32) )
-	 {
-		  /* ??????????????????????????????? */
- 			size = (font_size / 8 + ((font_size % 8) ? 1 : 0)) * (font_size / 2);
+	 if ((font_size == 16) || (font_size == 32)) {
+        size = (font_size / 8 + ((font_size % 8) ? 1 : 0)) * (font_size / 2);
 
-			for(i = 0; i < size; i++)
-			{
-					if(font_size == 16)
-							temp = asc2_1608[ch][i];	//????1608????
-					else if(font_size == 32)
-							temp = asc2_3216[ch][i];	//????3216????
-					else 
-							return;			//??��????
+        for (i = 0; i < size; i++) {
+            if(font_size == 16) {
+                temp = asc2_1608[ch][i];
+            } else if (font_size == 32) {
+                temp = asc2_3216[ch][i];
+            } else {
+                return;
+            }
 
-					for(j = 0; j < 8; j++)
-					{
-							if(temp & 0x80)
-								lcd_write_color(font_color);
-							else 
-								lcd_write_color(back_color);
+            for (j = 0; j < 8; j++) {
+                if(temp & 0x80) {
+                    lcd_write_color(font_color);
+                } else { 
+                    lcd_write_color(back_color);
+                }
+                temp <<= 1;
+            }
+        }
+	 } else if(font_size == 12) {
+        size = (font_size / 8 + ((font_size % 8) ? 1 : 0)) * (font_size / 2);
 
-							temp <<= 1;
-					}
-			}
-	 }
-	  /* ???12?????? */
-	 else if(font_size == 12)
-	 {
-		  /* ??????????????????????????????? */
- 			size = (font_size / 8 + ((font_size % 8) ? 1 : 0)) * (font_size / 2);
+        for (i = 0; i < size; i++) {
+            temp = asc2_1206[ch][i];
+            for (j = 0; j < 6; j++) {
+                if (temp & 0x80) {
+                    lcd_write_color(font_color);
+                } else { 
+                    lcd_write_color(back_color);
+                }
+                temp <<= 1;
+            }
+        }
+	 } else if (font_size == 24) {
+        size = (font_size * 16) / 8;
 
-			for(i = 0; i < size; i++)
-			{
-				  temp = asc2_1206[ch][i];
-
-					for(j = 0; j < 6; j++)
-					{
-							if(temp & 0x80)
-								lcd_write_color(font_color);
-							else 
-								lcd_write_color(back_color);
-
-							temp <<= 1;
-					}
-			}
-	 }
-	 /* ???24?????? */
-	 else if(font_size == 24)
-	 {
-		  /* ??????????????????????????????? */
- 			size = (font_size * 16) / 8;
-
-			for(i = 0; i < size; i++)
-			{
-				  temp = asc2_2412[ch][i];
-					if(i % 2 == 0)
-							t = 8;
-					else
-							t = 4;
-					for(j = 0; j < t; j++)
-					{
-							if(temp & 0x80)
-								lcd_write_color(font_color);
-							else 
-								lcd_write_color(back_color);
-
-							temp <<= 1;
-					}
-			}
-	 }	 
-	 /* ???????? */
-	 else
+        for (i = 0; i < size; i++) {
+            temp = asc2_2412[ch][i];
+            if (i % 2 == 0) {
+                t = 8;
+            } else {
+                t = 4;
+            }
+            
+            for (j = 0; j < t; j++) {
+                if (temp & 0x80) {
+                    lcd_write_color(font_color);
+                } else { 
+                    lcd_write_color(back_color);
+                }
+                temp <<= 1;
+            }
+        }
+    } else {
 		 return;
+    }
 }
 
 /**
- * @brief		??????ASCII???????
- * @param   x,y		??????????
- * @param   str		?????????????
- * @param   size	?????��(???16/24/32??????)
+ * @brief   display a string with color.
+ * @param   x,y         string start address
+ * @param   str         string
+ * @param   back_color  background color
+ * @param   font_color  front color
+ * @param   font_size   font size of character
  * @return  none
- * @note		1. ???font.h???????????
- * 					2. ???????width??????????????
  */
-void LCD_show_str(uint16_t x, uint16_t y, char* str, uint16_t back_color, uint16_t font_color, uint8_t font_size)
+void lcd_show_str(uint16_t x, uint16_t y, char* str, uint16_t back_color, uint16_t font_color, uint8_t font_size)
 {
-	while((*str <= '~') && (*str >= ' '))	//?��?????????
-	{
-			LCD_ShowChar(x,y,*str,back_color, font_color,font_size);
-			x += font_size / 2;
-			str++;
+	while ((*str <= '~') && (*str >= ' ')) {
+        lcd_show_char(x,y,*str,back_color, font_color,font_size);
+        x += font_size / 2;
+        str++;
 	}
 }
 #endif /* USE_ASCII_FONT_LIB */
 
 /**
- * @breif		???????????????
- * @param   x,y ???? ??????????
- * @param		r ???? ??????
- * @param		color	???? ???
- * @retval	none
+ * @brief   display a six point star with color.
+ * @param   x,y         star start address
+ * @param   r           raduis of star
+ * @param   back_color  star color
+ * @return  none
  */
 void lcd_draw_color_sixpointstar(uint16_t x, uint16_t y, uint8_t r, uint16_t color)
 {
 		uint16_t a = r / 2;
 		uint16_t b = 1.432*r;
 	
-		/* ????????? */
-		LCD_Draw_ColorLine(x-b,y-a,x+b,y-a,color);
-		LCD_Draw_ColorLine(x+b,y-a,x,y+r,color);
-		LCD_Draw_ColorLine(x,y+r,x-b,y-a,color);
+		lcd_draw_color_line(x-b,y-a,x+b,y-a,color);
+		lcd_draw_color_line(x+b,y-a,x,y+r,color);
+		lcd_draw_color_line(x,y+r,x-b,y-a,color);
 	
-		/* ?????????? */
-		LCD_Draw_ColorLine(x-b,y+a,x+b,y+a,color);
-		LCD_Draw_ColorLine(x+b,y+a,x,y-r,color);
-		LCD_Draw_ColorLine(x,y-r,x-b,y+a,color);
+		lcd_draw_color_line(x-b,y+a,x+b,y+a,color);
+		lcd_draw_color_line(x+b,y+a,x,y-r,color);
+		lcd_draw_color_line(x,y-r,x-b,y+a,color);
 
 }
 
 #if USE_PICTURE_DISPLAY
 /**
- * @brief	?????????
- * @param   x,y	    ???? ???????
- * @param   width	???? ??????
- * @param   height	???? ?????
- * @param   p       ???? ????????????????
+ * @brief   display a picture.
+ * @param   x,y         picture start address
+ * @param   width       width of picture
+ * @param   height      height of pictue
+ * @param   p           pointer to picture buffer
  * @return  none
- * @note	Image2Lcd???????C????????/?????/16��????(RGB565)/??��?????????????
  */
 void lcd_show_image(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint8_t *p)
 {
-	uint32_t img_size = width * height * 2;		//??????????
-	uint32_t remain_size = img_size;		    //????��?????????????
+	uint32_t img_size = width * height * 2;
+	uint32_t remain_size = img_size;
 	uint8_t i = 0;
 	
-	/* ?????? */
-    if(x + width > LCD_Width || y + height > LCD_Height)
-    {
+    if(x + width > LCD_Width || y + height > LCD_Height) {
         return;
     }
 				
@@ -744,20 +673,14 @@ void lcd_show_image(uint16_t x, uint16_t y, uint16_t width, uint16_t height, con
 
     LCD_WR_RS(1);
 
-    /* SPI????????2^16 = 65536??????,??????��?240*240*2 = 115200?????????��?????????????????? */
-    for(i = 0;i <= img_size / 65536; i++)
-    {
-        if(remain_size / 65536 >= 1)
-        {
+    for (i = 0;i <= img_size / 65536; i++) {
+        if (remain_size / 65536 >= 1) {
             spi_write_bytes((uint8_t *)p, 65535);
             p += 65535;
             remain_size -= 65535;
-        }
-        else
-        {
+        } else {
             spi_write_bytes((uint8_t *)p, remain_size % 65535);
         }
-            
     }  
 }
 #endif /*  USE_PICTURE_DISPLAY */

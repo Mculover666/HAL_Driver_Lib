@@ -15,7 +15,7 @@
 #include "stm32l4xx_hal.h"
 #include "spi.h"
 
-#define	USE_ASCII_FONT_LIB			0   // Whether to enable character display
+#define	USE_ASCII_FONT_LIB			1   // Whether to enable character display
 #define USE_PICTURE_DISPLAY			0   // Whether to enable picture display
 #define USE_VERTICAL_SCROLL         0   // Whether to enable vertical scrolling
 
@@ -61,7 +61,7 @@ uint16_t rgb2hex_565(uint16_t r, uint16_t g, uint16_t b);
 
 #if USE_ASCII_FONT_LIB
 void lcd_show_char(uint16_t x, uint16_t y, char ch, uint16_t back_color, uint16_t font_color, uint8_t font_size);
-void LCD_show_str(uint16_t x, uint16_t y, uint8_t max_width, char* str, uint16_t back_color, uint16_t font_color, uint8_t font_size);
+void lcd_show_str(uint16_t x, uint16_t y, char* str, uint16_t back_color, uint16_t font_color, uint8_t font_size);
 #endif /* USE_ASCII_FONT_LIB */
 
 void lcd_draw_color_sixpointstar(uint16_t x, uint16_t y, uint8_t r, uint16_t color);
