@@ -4,6 +4,14 @@
 #include "dma2d.h"
 #endif /* USE_DMA2D_EN */
 
+#if USE_ASCII_EN
+#include "font/font_ascii.h"
+#endif /* USE_ASCII_EN */
+
+#if USE_CHINESE_EN
+#include "font/font_hz.h"
+#endif /* USE_CHINESE_EN */
+
 void lcd_backlight_control(uint8_t bightness)
 {
     // todo: use pwm to control backlight
@@ -202,3 +210,130 @@ void lcd_fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color
     }
 #endif /* USE_DMA2D_EN */
 }
+
+#if USE_ASCII_EN
+void lcd_show_char(uint16_t x, uint16_t y, char ch, uint16_t back_color, uint16_t font_color, uint8_t font_size)
+{
+    uint16_t i, j;
+    uint16_t x_pos, y_pos, size, font_width, font_height;
+    uint8_t *font_ptr;
+    uint8_t bit_width, temp;
+	
+    if((x > (LCD_WIDTH - font_size / 2)) || (y > (LCD_HEIGHT - font_size)))	{
+        return;
+    }
+	
+    font_width = font_size / 2;
+    font_height = font_size;
+    size = (font_width / 8 + ((font_width % 8) ? 1 : 0)) * font_height;
+    x_pos = x;
+    y_pos = y;
+    ch = ch - ' ';
+
+    switch (font_size) {
+        case 12:
+            bit_width = 6;
+            font_ptr = (uint8_t*)&asc2_1206[ch];
+        case 16:
+            bit_width = 8;
+            font_ptr = (uint8_t*)&asc2_1608[ch];
+            break;
+        case 24:
+            font_ptr = (uint8_t*)&asc2_2412[ch];
+            break;
+        case 32:
+            bit_width = 8;
+            font_ptr = (uint8_t*)&asc2_3216[ch];
+            break;
+        default:
+            return;
+    }
+	 
+    for (i = 0; i < size; i++) {
+        temp = *(font_ptr + i);
+
+        if (font_size == 24) {
+            bit_width = (i % 2 == 0) ? 8 : 4;
+        }
+
+        for (j = 0; j < bit_width; j++) {
+            if(temp & 0x80){
+                lcd_draw_point(x_pos, y_pos, font_color);
+            } else {
+                lcd_draw_point(x_pos, y_pos, back_color);
+            }
+            temp <<= 1;
+            x_pos++;
+        }
+        if (x_pos >= (x + font_width)) {
+            y_pos++;
+            x_pos = x;
+        }
+    }
+} 
+
+void lcd_show_str(uint16_t x, uint16_t y, char *str, uint16_t back_color, uint16_t font_color, uint8_t font_size)
+{
+    uint16_t font_width = font_size / 2;
+    uint16_t x_pos = x;
+
+    while (*str) {
+        lcd_show_char(x_pos, y, *str, back_color, font_color, font_size);
+        x_pos += font_width;
+        str++; 
+    }
+}
+
+#endif /* USE_ASCII_EN */
+
+#if USE_CHINESE_EN
+void lcd_show_chinese(uint16_t x, uint16_t y, char ch, uint16_t back_color, uint16_t font_color, uint8_t font_size)
+{
+    uint16_t i, j;
+    uint16_t x_pos, y_pos, size, font_width, font_height;
+    uint8_t *font_ptr;
+    uint8_t bit_width, temp;
+	
+    if((x > (LCD_WIDTH - font_size)) || (y > (LCD_HEIGHT - font_size)))	{
+        return;
+    }
+	
+    x_pos = x;
+    y_pos = y;
+    font_height = font_size;
+    font_width = font_size;
+    bit_width = 8;
+    size = (font_width / 8 + ((font_width % 8) ? 1 : 0)) * font_height;
+
+    switch (font_size) {
+        case 16:
+            font_ptr = (uint8_t*)&hz_16x16[ch];
+            break;
+        case 24:
+            font_ptr = (uint8_t*)&hz_24x24[ch];
+            break;
+        case 32:
+            font_ptr = (uint8_t*)&hz_32x32[ch];
+            break;
+        default:
+            return;
+    }
+    
+    for (i = 0; i < size; i++) {
+        temp = *(font_ptr + i);
+        for (j = 0; j < bit_width; j++) {
+            if(temp & 0x80){
+                lcd_draw_point(x_pos, y_pos, font_color);
+            } else {
+                lcd_draw_point(x_pos, y_pos, back_color);
+            }
+            temp <<= 1;
+            x_pos++;
+        }
+        if (x_pos >= (x + font_width)) {
+            y_pos++;
+            x_pos = x;
+        }
+    }
+}
+#endif /* USE_CHINESE_EN */

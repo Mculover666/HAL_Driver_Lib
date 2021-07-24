@@ -26,6 +26,16 @@
 #define USE_DMA2D_EN        1
 
 /**
+ * @brief   whether enable ASCII char display.
+*/
+#define USE_ASCII_EN        1
+
+/**
+ * @brief   whether enable chinese char display.
+*/
+#define USE_CHINESE_EN      1
+
+/**
  * @brief   color
  * @note    rgb565   
 */
@@ -112,5 +122,56 @@ void lcd_draw_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t 
  * @return      None
 */
 void lcd_fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
+
+#if USE_ASCII_EN
+/**
+ * @brief       Show a ASCII char.
+ * @param[in]   x1  horizontal start position.
+ * @param[in]   y1  vertical start position.
+ * @param[in]   x2  horizontal end position.
+ * @param[in]   y2  vertical end position.
+ * @param[in]   ch  ascii char.      
+ * @param[in]   back_color  rgb565
+ * @param[in]   font_color  rgb565
+ * @param[in]   font_size   support 12/16/24/32.
+ * @return      None
+ * @note        This function need ascii library(font.h).
+*/
+void lcd_show_char(uint16_t x, uint16_t y, char ch, uint16_t back_color, uint16_t font_color, uint8_t font_size);
+
+/**
+ * @brief       Show a ASCII string.
+ * @param[in]   x1  horizontal start position.
+ * @param[in]   y1  vertical start position.
+ * @param[in]   x2  horizontal end position.
+ * @param[in]   y2  vertical end position.
+ * @param[in]   str  ascii string.      
+ * @param[in]   back_color  rgb565
+ * @param[in]   font_color  rgb565
+ * @param[in]   font_size   support 12/16/24/32.
+ * @return      None
+ * @note        This function need ascii library(font.h).
+*/
+void lcd_show_str(uint16_t x, uint16_t y, char *str, uint16_t back_color, uint16_t font_color, uint8_t font_size);
+
+#endif /* USE_ASCII_EN */
+
+#if USE_CHINESE_EN
+/**
+ * @brief       Show a chinese char.
+ * @param[in]   x1  horizontal start position.
+ * @param[in]   y1  vertical start position.
+ * @param[in]   x2  horizontal end position.
+ * @param[in]   y2  vertical end position.
+ * @param[in]   ch  offset in hz library.      
+ * @param[in]   back_color  rgb565
+ * @param[in]   font_color  rgb565
+ * @param[in]   font_size   support 16/24/32.
+ * @return      None
+ * @note        This function need hz library.
+*/
+void lcd_show_chinese(uint16_t x, uint16_t y, char ch, uint16_t back_color, uint16_t font_color, uint8_t font_size);
+
+#endif /* USE_CHINESE_EN */
 
 #endif /* _LCD_RGB_LTDC_DRV_H_ */
