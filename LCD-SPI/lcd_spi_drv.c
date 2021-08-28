@@ -5,7 +5,8 @@
  * @changelog
  *            			v1.0    finish baic function                mculover666    2019/7/10
  *                      v2.0    add macro define to control build   mculover666    2019/7/13
- *                      v2.1    add support for scroll function     mculover666    2021/5/19
+ *                      v2.1    add support for scroll function     mculover666    2021/5/18
+ *                      v2.2    optimizing code style               mculover666    2021/5/19
  */
 
 #include "lcd_spi_drv.h"
@@ -19,11 +20,6 @@
 
 static uint8_t lcd_buf[LCD_BUFFER_SIZE];
 
-/**
- * @brief	LCD hard reset
- * @param   none
- * @return  none
- */
 static void lcd_hard_reset(void)
 {
     LCD_PWR(0);
@@ -32,44 +28,23 @@ static void lcd_hard_reset(void)
     LCD_RST(1);
 }
 
-/**
- * @brief	Write bytes to LCD
- * @param   data    pointer of data buffer to send
- * @param   size    length of data buffer to send
- * @return  none
- */
 static void spi_write_bytes(uint8_t *data, uint16_t size)
 {
     HAL_SPI_Transmit(&LCD_SPI_HANDLER, data, size, 1000);
 }
 
-/**
- * @brief	Write command to lcd.
- * @param   cmd    lcd control command
- * @return  none
- */
 static void lcd_write_cmd(uint8_t cmd)
 {
     LCD_WR_RS(0);
     spi_write_bytes(&cmd, 1);
 }
 
-/**
- * @brief	Write data to lcd.
- * @param 	dat    lcd parameter/RAM data
- * @return  none
- */
 static void lcd_write_data(uint8_t dat)
 {
     LCD_WR_RS(1);
     spi_write_bytes(&dat, 1);
 }
-/**
- * @brief	write color data to LCD.
- * @param   color    the color data  
- * @return  none
- * @note    color data format is RGB 565, 16bit.
- */
+
 static void lcd_write_color(const uint16_t color)
 {
     uint8_t data[2] = {0};
@@ -81,15 +56,6 @@ static void lcd_write_color(const uint16_t color)
     spi_write_bytes(data, 2);
 }
 
-/**
- * @brief   Convert the RGB 565 color to hex.
- * @param   r   red value of color(0 - 63)
- * @param   g   green value of color(0 - 127)
- * @param   b   GREEN value of color(0 - 63)
- * @return  hex value of color
- * @note    color format: rgb 565
- * 
-*/
 uint16_t rgb2hex_565(uint16_t r, uint16_t g, uint16_t b)
 {
     uint16_t color;
@@ -102,12 +68,6 @@ uint16_t rgb2hex_565(uint16_t r, uint16_t g, uint16_t b)
     return color;
 }
 
-/**
- * @brief	set lcd display address
- * @param   x1,y2   start address
- * @param   x2,y2	end address
- * @return  none
- */
 static void lcd_address_set(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
 {
     lcd_write_cmd(0x2a);
@@ -125,35 +85,20 @@ static void lcd_address_set(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
     lcd_write_cmd(0x2C);
 }
 
-/**
- * @breif	turn on LCD power.
- * @param   none
- * @return  none
- */
 void lcd_display_on(void)
 {
     LCD_PWR(1);
 }
 
-/**
- * @brief	turn off LCD power.
- * @param   none
- * @return  none
- */
 void lcd_display_off(void)
 {
     LCD_PWR(0);
 }
 
-/**
- * @brief	clear LCD with color.
- * @param   color   LCD color
- * @return  none
- */
 void lcd_clear(uint16_t color)
 {
     uint16_t i, j;
-    uint8_t data[2] = {0};  //LCD?????????16bit??data[0]???????????��??data[1]???????????��
+    uint8_t data[2] = {0};
     uint16_t remain_size;
 
     data[0] = color >> 8;
@@ -180,53 +125,8 @@ void lcd_clear(uint16_t color)
     }   
 }
 
-#if USE_VERTICAL_SCROLL
-/**
- * @brief	Vertical Scrolling Definition.
- * @param   tfa    top fixed area
- * @param   vsa    scroll area
- * @param   bta    bottom fixed area
- * @return  errcode
- * @retval  0      success
- * @retval  -1     fail 
- */
-int lcd_set_scroll_area(uint16_t tfa, uint16_t vsa, uint16_t bta)
-{
-    uint8_t data;
-    
-    if (tfa + vsa + bta != 320) {
-        return -1;
-    }
-    
-    lcd_write_cmd(0x33);
-    lcd_write_data(tfa >> 8);
-    lcd_write_data(tfa);
-    lcd_write_data(vsa >> 8);
-    lcd_write_data(vsa);    
-    lcd_write_data(bta >> 8);
-    lcd_write_data(bta);
-    
-    return 0;
-}
 
-/**
- * @brief	Set Vertical scroll start address of RAM.
- * @param   vsp    scroll start address of RAM
- * @return  none
- */
-void lcd_set_scroll_start_address(uint16_t vsp)
-{
-    lcd_write_cmd(0x37);
-    lcd_write_data(vsp>>8);
-    lcd_write_data(vsp);
-}
-#endif /* USE_VERTICAL_SCROLL */
 
-/**
- * @brief	LCD?????
- * @param   none
- * @return  none
- */
 void lcd_init(void)
 {
     /* GPIO initialization code in main.c */
@@ -341,25 +241,12 @@ void lcd_init(void)
     LCD_PWR(1);
 }
 
-/**
- * @brief   draw a point with color.
- * @param   x,y     point address
- * @param   color   point color
- * @return  none
- */
 void lcd_draw_color_point(uint16_t x, uint16_t y,uint16_t color)
 {
     lcd_address_set(x, y, x, y);
     lcd_write_color(color);
 }
 
-/**
- * @brief   draw a line with color.
- * @param   x1,y1   line start address
- * @param   x2,y2   line end address
- * @param   color   line color
- * @return  none
- */
 void lcd_draw_color_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
 {
     uint16_t	i = 0;
@@ -427,13 +314,6 @@ void lcd_draw_color_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uin
     }
 }
 
-/**
- * @brief   draw a rect with color.
- * @param   x1,y1   rect start address
- * @param   x2,y2   rect end address
- * @param   color   rect color
- * @return  none
- */
 void lcd_draw_color_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
 {
     lcd_draw_color_line(x1, y1, x2, y1, color);
@@ -442,13 +322,6 @@ void lcd_draw_color_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uin
     lcd_draw_color_line(x2, y1, x2, y2, color);
 }
 
-/**
- * @brief   draw a circle with color.
- * @param   x,y     center of circle address
- * @param   r       radius of cirlce
- * @param   color   circle color
- * @return  none
- */
 void lcd_draw_color_circle(uint16_t x, uint16_t y, uint16_t r, uint16_t color)
 {
 	int16_t a = 0, b = r;
@@ -481,14 +354,7 @@ void lcd_draw_color_circle(uint16_t x, uint16_t y, uint16_t r, uint16_t color)
     }
 }
 
-/**
- * @brief   fill a rect with color.
- * @param   x1,y1   rect start address
- * @param   x2,y2   rect end address
- * @param   color   rect color
- * @return  none
- */
-void lcd_fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
+void lcd_fill_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
 {
     uint16_t i = 0;
     uint32_t size = 0, size_remain = 0;
@@ -525,15 +391,6 @@ void lcd_fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color
 }
 
 #if USE_ASCII_FONT_LIB
-/**
- * @brief   display a character with color.
- * @param   x1,y1       character start address
- * @param   ch          character
- * @param   back_color  background color
- * @param   font_color  front color
- * @param   font_size   font size of character
- * @return  none
- */
 void lcd_show_char(uint16_t x, uint16_t y, char ch, uint16_t back_color, uint16_t font_color, uint8_t font_size)
 {
 	int i = 0, j = 0;
@@ -609,15 +466,6 @@ void lcd_show_char(uint16_t x, uint16_t y, char ch, uint16_t back_color, uint16_
     }
 }
 
-/**
- * @brief   display a string with color.
- * @param   x,y         string start address
- * @param   str         string
- * @param   back_color  background color
- * @param   font_color  front color
- * @param   font_size   font size of character
- * @return  none
- */
 void lcd_show_str(uint16_t x, uint16_t y, char* str, uint16_t back_color, uint16_t font_color, uint8_t font_size)
 {
 	while ((*str <= '~') && (*str >= ' ')) {
@@ -628,37 +476,6 @@ void lcd_show_str(uint16_t x, uint16_t y, char* str, uint16_t back_color, uint16
 }
 #endif /* USE_ASCII_FONT_LIB */
 
-/**
- * @brief   display a six point star with color.
- * @param   x,y         star start address
- * @param   r           raduis of star
- * @param   back_color  star color
- * @return  none
- */
-void lcd_draw_color_sixpointstar(uint16_t x, uint16_t y, uint8_t r, uint16_t color)
-{
-		uint16_t a = r / 2;
-		uint16_t b = 1.432*r;
-	
-		lcd_draw_color_line(x-b,y-a,x+b,y-a,color);
-		lcd_draw_color_line(x+b,y-a,x,y+r,color);
-		lcd_draw_color_line(x,y+r,x-b,y-a,color);
-	
-		lcd_draw_color_line(x-b,y+a,x+b,y+a,color);
-		lcd_draw_color_line(x+b,y+a,x,y-r,color);
-		lcd_draw_color_line(x,y-r,x-b,y+a,color);
-
-}
-
-#if USE_PICTURE_DISPLAY
-/**
- * @brief   display a picture.
- * @param   x,y         picture start address
- * @param   width       width of picture
- * @param   height      height of pictue
- * @param   p           pointer to picture buffer
- * @return  none
- */
 void lcd_show_image(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint8_t *p)
 {
 	uint32_t img_size = width * height * 2;
@@ -683,4 +500,43 @@ void lcd_show_image(uint16_t x, uint16_t y, uint16_t width, uint16_t height, con
         }
     }  
 }
-#endif /*  USE_PICTURE_DISPLAY */
+
+#if USE_VERTICAL_SCROLL
+/**
+ * @brief	Vertical Scrolling Definition.
+ * @param   tfa    top fixed area
+ * @param   vsa    scroll area
+ * @param   bta    bottom fixed area
+ * @return  errcode
+ * @retval  0      success
+ * @retval  -1     fail 
+ */
+int lcd_set_scroll_area(uint16_t tfa, uint16_t vsa, uint16_t bta)
+{
+    if (tfa + vsa + bta != 320) {
+        return -1;
+    }
+    
+    lcd_write_cmd(0x33);
+    lcd_write_data(tfa >> 8);
+    lcd_write_data(tfa);
+    lcd_write_data(vsa >> 8);
+    lcd_write_data(vsa);    
+    lcd_write_data(bta >> 8);
+    lcd_write_data(bta);
+    
+    return 0;
+}
+
+/**
+ * @brief	Set Vertical scroll start address of RAM.
+ * @param   vsp    scroll start address of RAM
+ * @return  none
+ */
+void lcd_set_scroll_start_address(uint16_t vsp)
+{
+    lcd_write_cmd(0x37);
+    lcd_write_data(vsp>>8);
+    lcd_write_data(vsp);
+}
+#endif /* USE_VERTICAL_SCROLL */
