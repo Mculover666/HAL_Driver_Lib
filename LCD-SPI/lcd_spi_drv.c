@@ -3,10 +3,11 @@
  * @filename  			lcd_spi_drv.h
  * @breif				Drive ST7789 LCD based on spi interface
  * @changelog
- *            			v1.0    finish baic function                mculover666    2019/7/10
+ *            			v1.0    finish basic function               mculover666    2019/7/10
  *                      v2.0    add macro define to control build   mculover666    2019/7/13
  *                      v2.1    add support for scroll function     mculover666    2021/5/18
  *                      v2.2    optimizing code style               mculover666    2021/5/19
+ *                      v2.3    optimizing speed                    mculover666    2021/8/29
  */
 
 #include "lcd_spi_drv.h"
@@ -15,10 +16,10 @@
 #include "font.h"
 #endif /* USE_ASCII_FONT_LIB */
 
-#define LCD_TOTAL_BUF_SIZE	(LCD_Width*LCD_Height*2)
-#define LCD_BUFFER_SIZE 1152
-
-static uint8_t lcd_buf[LCD_BUFFER_SIZE];
+static lcd_color_params_t s_lcd_color_params = {
+    .background_color = BLACK,
+    .foreground_color = WHITE
+};
 
 static void lcd_hard_reset(void)
 {
@@ -95,16 +96,24 @@ void lcd_display_off(void)
     LCD_PWR(0);
 }
 
-void lcd_clear(uint16_t color)
+void lcd_color_set(uint16_t back_color, uint16_t fore_color)
 {
+    s_lcd_color_params.background_color = back_color;
+    s_lcd_color_params.foreground_color = fore_color;
+}
+
+void lcd_clear(void)
+{
+#if 0
     uint16_t i, j;
     uint8_t data[2] = {0};
     uint16_t remain_size;
+    uint16_t color = s_lcd_color_params.background_color;
 
     data[0] = color >> 8;
     data[1] = color;
 
-    lcd_address_set(0, 0, LCD_Width - 1, LCD_Height - 1);
+    lcd_address_set(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1);
 
     for(j = 0; j < LCD_BUFFER_SIZE / 2; j++)
     {
@@ -122,10 +131,19 @@ void lcd_clear(uint16_t color)
     remain_size = LCD_TOTAL_BUF_SIZE % LCD_BUFFER_SIZE;
     if (remain_size) {
         spi_write_bytes(lcd_buf, remain_size);
-    }   
+    }
+#else
+    uint32_t size, i;
+    uint16_t color = s_lcd_color_params.background_color;
+
+    size = LCD_WIDTH * LCD_HEIGHT;
+    
+    lcd_address_set(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1);
+    for (i = 0; i < size; i++) {
+        lcd_write_color(color);
+    }
+#endif
 }
-
-
 
 void lcd_init(void)
 {
@@ -234,20 +252,19 @@ void lcd_init(void)
     /* Display Inversion On */
     lcd_write_cmd(0x21);
     lcd_write_cmd(0x29);
-
-    lcd_address_set(0, 0, LCD_Width - 1, LCD_Height - 1);
-    lcd_clear(DEFAULT_COLOR_AFTER_INIT);
+    
+    lcd_clear();
 
     LCD_PWR(1);
 }
 
-void lcd_draw_color_point(uint16_t x, uint16_t y,uint16_t color)
+void lcd_draw_point(uint16_t x, uint16_t y,uint16_t color)
 {
     lcd_address_set(x, y, x, y);
     lcd_write_color(color);
 }
 
-void lcd_draw_color_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
+void lcd_draw_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
 {
     uint16_t	i = 0;
     int16_t		delta_x = 0, delta_y = 0;
@@ -257,17 +274,11 @@ void lcd_draw_color_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uin
     uint16_t	x = 0, y = 0;
     uint16_t 	x_temp = 0, y_temp = 0;
 	
-
     if (y1 == y2) {
-        lcd_address_set(x1, y1, x2, y2);
-
-        for(i = 0; i < x2 - x1; i++) {
-            lcd_buf[2 * i] = color >> 8;
-            lcd_buf[2 * i + 1] = color;
+        lcd_address_set(x1, y1, x2 - 1, y2);
+        for (i = 0; i < x2 - x1; i++) {
+            lcd_write_color(color);
         }
-
-        LCD_WR_RS(1);
-        spi_write_bytes(lcd_buf, (x2 - x1) * 2);
         return;
     } else {
         delta_x = x2 - x1;
@@ -299,7 +310,7 @@ void lcd_draw_color_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uin
         x = x1;
         y = y1;
         for (t = 0; t <= distance + 1;t++) {
-            lcd_draw_color_point(x, y, color);
+            lcd_draw_point(x, y, color);
             x_temp += delta_x;	
             if (x_temp > distance) {
                 x_temp -= distance;		
@@ -314,33 +325,37 @@ void lcd_draw_color_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uin
     }
 }
 
-void lcd_draw_color_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
+void lcd_draw_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
 {
-    lcd_draw_color_line(x1, y1, x2, y1, color);
-    lcd_draw_color_line(x1, y1, x1, y2, color);
-    lcd_draw_color_line(x1, y2, x2, y2, color);
-    lcd_draw_color_line(x2, y1, x2, y2, color);
+    if (y1 == y2) {
+        lcd_draw_line(x1, y1, x2, y1, color);
+    } else {
+        lcd_draw_line(x1, y1, x2, y1, color);
+        lcd_draw_line(x1, y1, x1, y2, color);
+        lcd_draw_line(x1, y2, x2, y2, color);
+        lcd_draw_line(x2, y1, x2, y2, color);
+    }
 }
 
-void lcd_draw_color_circle(uint16_t x, uint16_t y, uint16_t r, uint16_t color)
+void lcd_draw_circle(uint16_t x, uint16_t y, uint16_t r, uint16_t color)
 {
 	int16_t a = 0, b = r;
     int16_t d = 3 - (r << 1);
 		
-    if (x - r < 0 || x + r > LCD_Width || y - r < 0 || y + r > LCD_Height) {
+    if (x - r < 0 || x + r > LCD_WIDTH || y - r < 0 || y + r > LCD_HEIGHT) {
 		return;
     }
 		
     while(a <= b) {
-        lcd_draw_color_point(x - b, y - a, color);
-        lcd_draw_color_point(x + b, y - a, color);
-        lcd_draw_color_point(x - a, y + b, color);
-        lcd_draw_color_point(x - b, y - a, color);
-        lcd_draw_color_point(x - a, y - b, color);
-        lcd_draw_color_point(x + b, y + a, color);
-        lcd_draw_color_point(x + a, y - b, color);
-        lcd_draw_color_point(x + a, y + b, color);
-        lcd_draw_color_point(x - b, y + a, color);
+        lcd_draw_point(x - b, y - a, color);
+        lcd_draw_point(x + b, y - a, color);
+        lcd_draw_point(x - a, y + b, color);
+        lcd_draw_point(x - b, y - a, color);
+        lcd_draw_point(x - a, y - b, color);
+        lcd_draw_point(x + b, y + a, color);
+        lcd_draw_point(x + a, y - b, color);
+        lcd_draw_point(x + a, y + b, color);
+        lcd_draw_point(x - b, y + a, color);
         a++;
 
         if (d < 0) {
@@ -350,12 +365,13 @@ void lcd_draw_color_circle(uint16_t x, uint16_t y, uint16_t r, uint16_t color)
             b--;
         }
 
-        lcd_draw_color_point(x + a, y + b, color);
+        lcd_draw_point(x + a, y + b, color);
     }
 }
 
 void lcd_fill_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
 {
+#if 0
     uint16_t i = 0;
     uint32_t size = 0, size_remain = 0;
 
@@ -367,14 +383,14 @@ void lcd_fill_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t 
     }
 
     lcd_address_set(x1, y1, x2, y2);
+    LCD_WR_RS(1);
 
     while (1) {
         for (i = 0; i < size / 2; i++) {
             lcd_buf[2 * i] = color >> 8;
             lcd_buf[2 * i + 1] = color;
         }
-
-        LCD_WR_RS(1);
+        
         spi_write_bytes(lcd_buf, size);
 
         if (size_remain == 0) {
@@ -388,93 +404,173 @@ void lcd_fill_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t 
             size_remain = 0;
         }
     }
+#else
+    uint32_t size, i;
+
+    size = (x2 - x1) * (y2 - y1);
+    
+    lcd_address_set(x1, y1, x2 - 1, y2 - 1);
+    for (i = 0; i < size; i++) {
+        lcd_write_color(color);
+    }
+#endif
 }
 
-#if USE_ASCII_FONT_LIB
-void lcd_show_char(uint16_t x, uint16_t y, char ch, uint16_t back_color, uint16_t font_color, uint8_t font_size)
+void lcd_clear_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
 {
-	int i = 0, j = 0;
-	uint8_t temp = 0;
-	uint8_t size = 0;
-	uint8_t t = 0;
+    uint16_t back_color = s_lcd_color_params.background_color;
+    
+    lcd_fill_rect(x1, y1, x2, y2, back_color);
+}
+
+#include <stdio.h>
+
+void lcd_draw_char(uint16_t x, uint16_t y, char ch, uint8_t font_size)
+{
+    uint16_t i, j;
+    uint16_t x_pos, y_pos, size, font_width, font_height;
+    uint8_t *font_ptr;
+    uint8_t bit_width, temp;
+    uint16_t back_color, fore_color;
 	
-	 if ((x > (LCD_Width - font_size / 2)) || (y > (LCD_Height - font_size))) {	
-		 return;
-     }
+    if((x > (LCD_WIDTH - font_size / 2)) || (y > (LCD_HEIGHT - font_size)))	{
+        return;
+    }
 	
-	 lcd_address_set(x, y, x + font_size/2 - 1, y + font_size - 1);
-	 
-	 ch = ch - ' ';
-	 
-	 if ((font_size == 16) || (font_size == 32)) {
-        size = (font_size / 8 + ((font_size % 8) ? 1 : 0)) * (font_size / 2);
+    font_width = font_size / 2;
+    font_height = font_size;
+    size = (font_width / 8 + ((font_width % 8) ? 1 : 0)) * font_height;
+    x_pos = x;
+    y_pos = y;
+    ch = ch - ' ';
+    back_color = s_lcd_color_params.background_color;
+    fore_color = s_lcd_color_params.foreground_color;
 
-        for (i = 0; i < size; i++) {
-            if(font_size == 16) {
-                temp = asc2_1608[ch][i];
-            } else if (font_size == 32) {
-                temp = asc2_3216[ch][i];
+    switch (font_size) {
+        case 12:
+            bit_width = 6;
+            font_ptr = (uint8_t*)&asc2_1206[ch];
+        case 16:
+            bit_width = 8;
+            font_ptr = (uint8_t*)&asc2_1608[ch];
+            break;
+        case 24:
+            font_ptr = (uint8_t*)&asc2_2412[ch];
+            break;
+        case 32:
+            bit_width = 8;
+            font_ptr = (uint8_t*)&asc2_3216[ch];
+            break;
+        default:
+            return;
+    }
+    lcd_address_set(x, y, x+font_width-1, y+font_height-1);
+    for (i = 0; i < size; i++) {
+        temp = *(font_ptr + i);
+        if (font_size == 24) {
+            bit_width = (i % 2 == 0) ? 8 : 4;
+        }
+        //lcd_address_set(x_pos, y_pos, x_pos+8, y_pos);
+        for (j = 0; j < bit_width; j++) {
+            if(temp & 0x80){
+                //lcd_draw_point(x_pos, y_pos, fore_color);
+                lcd_write_color(fore_color);
             } else {
-                return;
+                //lcd_draw_point(x_pos, y_pos, back_color);
+                lcd_write_color(back_color);
+               
             }
-
-            for (j = 0; j < 8; j++) {
-                if(temp & 0x80) {
-                    lcd_write_color(font_color);
-                } else { 
-                    lcd_write_color(back_color);
-                }
-                temp <<= 1;
-            }
+            temp <<= 1;
+            x_pos++;
         }
-	 } else if(font_size == 12) {
-        size = (font_size / 8 + ((font_size % 8) ? 1 : 0)) * (font_size / 2);
-
-        for (i = 0; i < size; i++) {
-            temp = asc2_1206[ch][i];
-            for (j = 0; j < 6; j++) {
-                if (temp & 0x80) {
-                    lcd_write_color(font_color);
-                } else { 
-                    lcd_write_color(back_color);
-                }
-                temp <<= 1;
-            }
+        if (x_pos >= (x + font_width)) {
+            y_pos++;
+            x_pos = x;
         }
-	 } else if (font_size == 24) {
-        size = (font_size * 16) / 8;
+    } 
+}
 
-        for (i = 0; i < size; i++) {
-            temp = asc2_2412[ch][i];
-            if (i % 2 == 0) {
-                t = 8;
+const unsigned char hz_16x16[][32] = {
+    
+{0x01,0x00,0x01,0x00,0xFF,0xFE,0x01,0x00,0x01,0x00,0x7F,0xFC,0x48,0x24,0x44,0x44,// до //
+ 0x4F,0xE4,0x41,0x04,0x41,0x04,0x5F,0xF4,0x41,0x04,0x41,0x04,0x41,0x14,0x40,0x08},
+
+
+{0x00,0x40,0x20,0x40,0x10,0x40,0x10,0x40,0x87,0xFC,0x44,0x44,0x44,0x44,0x14,0x44,// см //
+ 0x14,0x44,0x27,0xFC,0xE4,0x44,0x24,0x44,0x24,0x44,0x24,0x44,0x27,0xFC,0x04,0x04},
+
+};
+
+#include <string.h>
+
+static int font_get_data(uint32_t offset, uint8_t font_size, uint8_t *buffer, uint16_t len)
+{
+    if (!buffer || !len) {
+        return -1;
+    }
+    
+    memcpy(buffer, &hz_16x16[offset], len);
+    
+    return 0;
+}
+
+void lcd_draw_chinese(uint16_t x, uint16_t y, uint32_t offset, uint8_t font_size)
+{
+    uint16_t i, j;
+    uint16_t x_pos, y_pos;
+    uint8_t bit_width, temp;
+    uint8_t buffer[CHINESE_FONT_BUF_MAX_SIZE_ONE_CHR];
+    uint16_t font_total_bytes, font_read_bytes;
+    uint16_t back_color, fore_color;
+	
+    if ((x > (LCD_WIDTH - font_size)) || (y > (LCD_HEIGHT - font_size)))	{
+        return;
+    }
+	
+    x_pos = x;
+    y_pos = y;
+    bit_width = 8;
+    back_color = s_lcd_color_params.background_color;
+    fore_color = s_lcd_color_params.foreground_color;
+    font_total_bytes = (font_size / 8 + ((font_size % 8) ? 1 : 0)) * font_size;
+
+    // so, when you want to show big chinese char, 
+    // you should incrase the CHINESE_FONT_BUF_MAX_SIZE_ONE_CHR
+    // to adjust buffer size(>= font_total_bytes).
+    
+#define MIN(a, b) (a < b ? a : b)
+    font_read_bytes = MIN(sizeof(buffer), font_total_bytes);
+    
+    if (font_get_data(offset, font_size, buffer, font_read_bytes) != 0) {
+        return;
+    }
+
+    for (i = 0; i < font_read_bytes; i++) {
+        temp = buffer[i];
+        for (j = 0; j < bit_width; j++) {
+            if(temp & 0x80){
+                lcd_draw_point(x_pos, y_pos, fore_color);
             } else {
-                t = 4;
+                lcd_draw_point(x_pos, y_pos, back_color);
             }
-            
-            for (j = 0; j < t; j++) {
-                if (temp & 0x80) {
-                    lcd_write_color(font_color);
-                } else { 
-                    lcd_write_color(back_color);
-                }
-                temp <<= 1;
-            }
+            temp <<= 1;
+            x_pos++;
         }
-    } else {
-		 return;
+        if (x_pos >= (x + font_size)) {
+            y_pos++;
+            x_pos = x;
+        }
     }
 }
 
-void lcd_show_str(uint16_t x, uint16_t y, char* str, uint16_t back_color, uint16_t font_color, uint8_t font_size)
+void lcd_draw_text(uint16_t x, uint16_t y, char* str, uint8_t font_size)
 {
 	while ((*str <= '~') && (*str >= ' ')) {
-        lcd_show_char(x,y,*str,back_color, font_color,font_size);
+        lcd_draw_char(x, y, *str, font_size);
         x += font_size / 2;
         str++;
 	}
 }
-#endif /* USE_ASCII_FONT_LIB */
 
 void lcd_show_image(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint8_t *p)
 {
@@ -482,7 +578,7 @@ void lcd_show_image(uint16_t x, uint16_t y, uint16_t width, uint16_t height, con
 	uint32_t remain_size = img_size;
 	uint8_t i = 0;
 	
-    if(x + width > LCD_Width || y + height > LCD_Height) {
+    if(x + width > LCD_WIDTH || y + height > LCD_HEIGHT) {
         return;
     }
 				
@@ -502,6 +598,7 @@ void lcd_show_image(uint16_t x, uint16_t y, uint16_t width, uint16_t height, con
 }
 
 #if USE_VERTICAL_SCROLL
+
 /**
  * @brief	Vertical Scrolling Definition.
  * @param   tfa    top fixed area
