@@ -11,6 +11,9 @@
 
 #include "fmc.h"
 
+#define SDRAM_HANDLE    hsdram2
+#define SDRAM_BANK      2
+
 #define SDRAM_MODEREG_BURST_LENGTH_1             ((uint16_t)0x0000)
 #define SDRAM_MODEREG_BURST_LENGTH_2             ((uint16_t)0x0001)
 #define SDRAM_MODEREG_BURST_LENGTH_4             ((uint16_t)0x0002)
