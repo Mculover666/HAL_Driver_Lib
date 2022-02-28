@@ -389,10 +389,10 @@ static void lcd_write_ram(uint16_t rgb_color)
 void lcd_clear(uint16_t color)
 {
 	uint32_t index = 0;      
-	uint32_t totalpoint = lcd_params.lcd_width;
+	uint32_t totalpoint = 0;
     
     /* 计算得到总点数 */
-	totalpoint *= lcd_params.lcd_height;
+	totalpoint = lcd_params.lcd_width * lcd_params.lcd_height;
     
     /* 设置光标位置 */
 	lcd_set_cursor(0x00,0x0000);
@@ -1613,7 +1613,7 @@ void lcd_init(void)
     lcd_display_on();
     
     /* LCD清屏 */
-	lcd_clear(LCD_DEFAULT_CLEAR_COLOR);
+	//lcd_clear(LCD_DEFAULT_CLEAR_COLOR);
 
     /* 打开背光 */
     lcd_backlight_ctrl(LCD_BACKLIGHT_ON);
@@ -1647,20 +1647,8 @@ void lcd_draw_point(uint16_t x_pos, uint16_t y_pos, uint16_t color)
  * @retval   none
  * @note     此函数执行完，坐标在窗口左上角
 */
-void lcd_set_window(uint16_t x_pos_start, uint16_t y_pos_start, uint16_t width, uint16_t height)
+void lcd_set_window(uint16_t x_pos_start, uint16_t y_pos_start, uint16_t x_pos_end, uint16_t y_pos_end)
 {
-    uint16_t x_pos_end, y_pos_end;
-
-    x_pos_end = x_pos_start + width - 1;
-    y_pos_end = y_pos_start + height - 1;
-    
-    if (x_pos_end < x_pos_start || x_pos_end > lcd_params.lcd_width) {
-        return;
-    }
-    
-    if (y_pos_end < y_pos_start || y_pos_end > lcd_params.lcd_height) {
-        return;
-    }
     
     if(lcd_params.lcd_id == 0x9341 || lcd_params.lcd_id == 0x5310) {
 		lcd_write_cmd(lcd_params.set_x_cmd); 
@@ -1865,7 +1853,7 @@ void lcd_draw_circle(uint16_t x, uint16_t y, uint16_t r, uint16_t color)
 }
 
 /**
- * @breif   LCD填充一个矩形区域
+ * @breif	LCD填充一个矩形区域
  * @param   x1 x方向起始坐标
  * @param   x2 x方向终止坐标
  * @param   y1 y方向起始坐标
@@ -1873,7 +1861,7 @@ void lcd_draw_circle(uint16_t x, uint16_t y, uint16_t r, uint16_t color)
  * @param	color 颜色
  * @retval	none
  */
-void lcd_fill_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
+void lcd_fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
 {
     uint16_t i, j;
     uint32_t xlen = 0;
@@ -1889,22 +1877,29 @@ void lcd_fill_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t 
 }
 
 /**
- * @breif   LCD填充一个圆形区域
- * @param   x x方向圆心坐标
- * @param   y y方向圆心坐标
- * @param   r 半径
- * @param	color 颜色
+ * @breif	LCD使用给定缓冲填充一个矩形区域
+ * @param   x1 x方向起始坐标
+ * @param   x2 x方向终止坐标
+ * @param   y1 y方向起始坐标
+ * @param   y2 y方向终止坐标
+ * @param	color_buf 数据缓冲区
  * @retval	none
  */
-void lcd_fill_circle(uint16_t x,uint16_t y,uint16_t r, uint16_t color)
+void lcd_fill_with_buffer(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t *color_buf)
 {
-    uint16_t a,b;
+    uint32_t index = 0;      
+	uint32_t totalpoint = 0;
+    uint16_t width = x2 - x1 + 1;
+    uint16_t height = y2 - y1 + 1;
     
-    for (b = y - r;b < y + r;b++) {
-        for (a= x - r;a < x + r;a++) {
-            if (((a-x) * (a-x) + (b-y) * (b-y)) <= r*r){
-                lcd_draw_point(a, b, color);
-            }
-        }
-    }
+    /* 计算得到总点数 */
+	totalpoint = width * height;
+    
+	lcd_set_window(x1, y1, x2, y2);
+	lcd_write_ram_start();
+    
+    /* 写入数据到GRAM */
+	for (index = 0; index < totalpoint; index++) {
+		lcd_write_ram(*color_buf++);
+	}
 }

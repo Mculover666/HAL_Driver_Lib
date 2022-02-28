@@ -128,7 +128,7 @@ void lcd_set_window(uint16_t x_pos_start, uint16_t y_pos_start, uint16_t width, 
 void lcd_draw_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
 void lcd_draw_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
 void lcd_draw_circle(uint16_t x, uint16_t y, uint16_t r, uint16_t color);
-void lcd_fill_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
-void lcd_fill_circle(uint16_t x,uint16_t y,uint16_t r, uint16_t color);
+void lcd_fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
+void lcd_fill_with_buffer(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t *color_buf);
 
 #endif /* _LCD_FSMC_H_ */
