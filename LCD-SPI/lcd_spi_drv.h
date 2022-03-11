@@ -8,6 +8,7 @@
  *                      v2.1    add support for scroll function     mculover666    2021/5/18
  *                      v2.2    optimizing code style               mculover666    2021/5/19
  *                      v2.3    optimizing speed                    mculover666    2021/8/29
+ *                      V2.4    optimizing lcd_draw_chinese_char    mculover666    2022/3/11
  */
 
 #ifndef _LCD_SPI_DRV_H_
@@ -154,7 +155,7 @@ void lcd_draw_circle(uint16_t x, uint16_t y, uint16_t r, uint16_t color);
 
 /**
  * @brief   display a character with color.
- * @param   x1,y1       character start address
+ * @param   x,y         character start address
  * @param   ch          character
  * @param   font_size   font size of character
  * @return  none
@@ -162,17 +163,14 @@ void lcd_draw_circle(uint16_t x, uint16_t y, uint16_t r, uint16_t color);
 void lcd_draw_char(uint16_t x, uint16_t y, char ch, uint8_t font_size);
 
 /**
- * @brief       Show a chinese char.
- * @param[in]   x1  horizontal start position.
- * @param[in]   y1  vertical start position.
- * @param[in]   x2  horizontal end position.
- * @param[in]   y2  vertical end position.
- * @param[in]   offset      offset in hz library.
- * @param[in]   font_size   support 16.
- * @return      None
- * @note        This function need hz library.
+ * @brief   show a chinese char.
+ * @param   x,y         character start address
+ * @param   font_width  the width of chinese char.
+ * @param   font_height the height of chinese char.
+ * @param   font_data   the data of chinese char form font lib.
+ * @return  None
 */
-void lcd_draw_chinese(uint16_t x, uint16_t y, uint32_t offset, uint8_t font_size);
+void lcd_draw_chinese_char(uint16_t x, uint16_t y, uint8_t font_width, uint8_t font_height, uint8_t *font_data);
 
 /**
  * @brief   display a string with color.

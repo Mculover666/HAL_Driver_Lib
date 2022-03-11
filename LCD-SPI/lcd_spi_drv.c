@@ -423,12 +423,10 @@ void lcd_clear_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
     lcd_fill_rect(x1, y1, x2, y2, back_color);
 }
 
-#include <stdio.h>
-
 void lcd_draw_char(uint16_t x, uint16_t y, char ch, uint8_t font_size)
 {
     uint16_t i, j;
-    uint16_t x_pos, y_pos, size, font_width, font_height;
+    uint16_t font_total_bytes, font_width, font_height;
     uint8_t *font_ptr;
     uint8_t bit_width, temp;
     uint16_t back_color, fore_color;
@@ -439,9 +437,7 @@ void lcd_draw_char(uint16_t x, uint16_t y, char ch, uint8_t font_size)
 	
     font_width = font_size / 2;
     font_height = font_size;
-    size = (font_width / 8 + ((font_width % 8) ? 1 : 0)) * font_height;
-    x_pos = x;
-    y_pos = y;
+    font_total_bytes = (font_width / 8 + ((font_width % 8) ? 1 : 0)) * font_height;
     ch = ch - ' ';
     back_color = s_lcd_color_params.background_color;
     fore_color = s_lcd_color_params.foreground_color;
@@ -465,100 +461,49 @@ void lcd_draw_char(uint16_t x, uint16_t y, char ch, uint8_t font_size)
             return;
     }
     lcd_address_set(x, y, x+font_width-1, y+font_height-1);
-    for (i = 0; i < size; i++) {
+    for (i = 0; i < font_total_bytes; i++) {
         temp = *(font_ptr + i);
         if (font_size == 24) {
             bit_width = (i % 2 == 0) ? 8 : 4;
         }
-        //lcd_address_set(x_pos, y_pos, x_pos+8, y_pos);
         for (j = 0; j < bit_width; j++) {
             if(temp & 0x80){
-                //lcd_draw_point(x_pos, y_pos, fore_color);
                 lcd_write_color(fore_color);
             } else {
-                //lcd_draw_point(x_pos, y_pos, back_color);
                 lcd_write_color(back_color);
                
             }
             temp <<= 1;
-            x_pos++;
-        }
-        if (x_pos >= (x + font_width)) {
-            y_pos++;
-            x_pos = x;
         }
     } 
 }
 
-const unsigned char hz_16x16[][32] = {
-    
-{0x01,0x00,0x01,0x00,0xFF,0xFE,0x01,0x00,0x01,0x00,0x7F,0xFC,0x48,0x24,0x44,0x44,// до //
- 0x4F,0xE4,0x41,0x04,0x41,0x04,0x5F,0xF4,0x41,0x04,0x41,0x04,0x41,0x14,0x40,0x08},
-
-
-{0x00,0x40,0x20,0x40,0x10,0x40,0x10,0x40,0x87,0xFC,0x44,0x44,0x44,0x44,0x14,0x44,// см //
- 0x14,0x44,0x27,0xFC,0xE4,0x44,0x24,0x44,0x24,0x44,0x24,0x44,0x27,0xFC,0x04,0x04},
-
-};
-
-#include <string.h>
-
-static int font_get_data(uint32_t offset, uint8_t font_size, uint8_t *buffer, uint16_t len)
-{
-    if (!buffer || !len) {
-        return -1;
-    }
-    
-    memcpy(buffer, &hz_16x16[offset], len);
-    
-    return 0;
-}
-
-void lcd_draw_chinese(uint16_t x, uint16_t y, uint32_t offset, uint8_t font_size)
+void lcd_draw_chinese_char(uint16_t x, uint16_t y, uint8_t font_width, uint8_t font_height, uint8_t *font_data)
 {
     uint16_t i, j;
-    uint16_t x_pos, y_pos;
     uint8_t bit_width, temp;
-    uint8_t buffer[CHINESE_FONT_BUF_MAX_SIZE_ONE_CHR];
-    uint16_t font_total_bytes, font_read_bytes;
+    uint16_t font_total_bytes;
     uint16_t back_color, fore_color;
 	
-    if ((x > (LCD_WIDTH - font_size)) || (y > (LCD_HEIGHT - font_size)))	{
+    if ((x > (LCD_WIDTH - font_width)) || (y > (LCD_HEIGHT - font_height)))	{
         return;
     }
 	
-    x_pos = x;
-    y_pos = y;
     bit_width = 8;
     back_color = s_lcd_color_params.background_color;
     fore_color = s_lcd_color_params.foreground_color;
-    font_total_bytes = (font_size / 8 + ((font_size % 8) ? 1 : 0)) * font_size;
+    font_total_bytes = (font_width / 8 + ((font_width % 8) ? 1 : 0)) * font_height;
 
-    // so, when you want to show big chinese char, 
-    // you should incrase the CHINESE_FONT_BUF_MAX_SIZE_ONE_CHR
-    // to adjust buffer size(>= font_total_bytes).
-    
-#define MIN(a, b) (a < b ? a : b)
-    font_read_bytes = MIN(sizeof(buffer), font_total_bytes);
-    
-    if (font_get_data(offset, font_size, buffer, font_read_bytes) != 0) {
-        return;
-    }
-
-    for (i = 0; i < font_read_bytes; i++) {
-        temp = buffer[i];
+    lcd_address_set(x, y, x + font_width - 1, y + font_height - 1);
+    for (i = 0; i < font_total_bytes; i++) {
+        temp = *(font_data + i);
         for (j = 0; j < bit_width; j++) {
             if(temp & 0x80){
-                lcd_draw_point(x_pos, y_pos, fore_color);
+                lcd_write_color(fore_color);
             } else {
-                lcd_draw_point(x_pos, y_pos, back_color);
+                lcd_write_color(back_color);
             }
             temp <<= 1;
-            x_pos++;
-        }
-        if (x_pos >= (x + font_size)) {
-            y_pos++;
-            x_pos = x;
         }
     }
 }
