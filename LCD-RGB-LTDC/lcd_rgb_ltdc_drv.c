@@ -9,7 +9,21 @@
 #endif /* USE_ASCII_EN */
 
 #if USE_CHINESE_EN
+#if USE_CHINESE_FULL_LIB
+
+#if CHINESE_FULL_LIB_16_EN
+#include "font/hz16.h"
+#endif
+#if CHINESE_FULL_LIB_24_EN
+#include "font/hz24.h"
+#endif
+#if  CHINESE_FULL_LIB_32_EN
+#include "font/hz32.h"
+#endif
+
+#else
 #include "font/font_hz.h"
+#endif /* USE_CHINESE_FULL_LIB */
 #endif /* USE_CHINESE_EN */
 
 void lcd_backlight_control(uint8_t bightness)
@@ -211,6 +225,42 @@ void lcd_fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color
 #endif /* USE_DMA2D_EN */
 }
 
+void lcd_fill_with_buffer(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t *color)
+{
+    uint32_t pos;
+    uint16_t *ptr;
+    uint16_t offsetLine, rect_width, rect_height;
+
+    // check position.
+    if (x1 > LCD_WIDTH || y1 > LCD_HEIGHT || x2 > LCD_WIDTH || y1 > LCD_HEIGHT || x1 > x2 || y1 > y2) {
+        return;
+    }
+
+    rect_width = x2 - x1 + 1;
+    rect_height = y2 - y1 + 1;
+
+    // calculate the position offset in framebuffer.
+    pos = x1 + y1*LCD_WIDTH;
+    ptr = (uint16_t*)LCD_FRAME_BUFFER;
+    offsetLine = LCD_WIDTH - rect_width;
+
+#if USE_DMA2D_EN
+    dma2d_transfer_data_m2m((uint32_t *)(ptr+pos), rect_width, rect_height, offsetLine, (uint32_t *)color, 0);
+#else
+    uint16_t i,j;
+    uint32_t offset;
+
+    offset = 0;
+    for (i = 0; i < rect_height; i++) {
+        for (j = 0; j < rect_width; j++) {
+            *(ptr+pos+offset) = *color++;
+            offset++;
+        }
+        offset += offsetLine;
+    }
+#endif /* USE_DMA2D_EN */
+}
+
 #if USE_ASCII_EN
 void lcd_show_char(uint16_t x, uint16_t y, char ch, uint16_t back_color, uint16_t font_color, uint8_t font_size)
 {
@@ -270,24 +320,12 @@ void lcd_show_char(uint16_t x, uint16_t y, char ch, uint16_t back_color, uint16_
             x_pos = x;
         }
     }
-} 
-
-void lcd_show_str(uint16_t x, uint16_t y, char *str, uint16_t back_color, uint16_t font_color, uint8_t font_size)
-{
-    uint16_t font_width = font_size / 2;
-    uint16_t x_pos = x;
-
-    while (*str) {
-        lcd_show_char(x_pos, y, *str, back_color, font_color, font_size);
-        x_pos += font_width;
-        str++; 
-    }
 }
 
 #endif /* USE_ASCII_EN */
 
 #if USE_CHINESE_EN
-void lcd_show_chinese(uint16_t x, uint16_t y, char ch, uint16_t back_color, uint16_t font_color, uint8_t font_size)
+void lcd_show_chinese(uint16_t x, uint16_t y, uint32_t offset, uint16_t back_color, uint16_t font_color, uint8_t font_size)
 {
     uint16_t i, j;
     uint16_t x_pos, y_pos, size, font_width, font_height;
@@ -307,16 +345,44 @@ void lcd_show_chinese(uint16_t x, uint16_t y, char ch, uint16_t back_color, uint
 
     switch (font_size) {
         case 16:
-            font_ptr = (uint8_t*)&hz_16x16[ch];
+#if USE_CHINESE_FULL_LIB
+#if CHINESE_FULL_LIB_16_EN
+            font_ptr = (uint8_t*)(hz16) + offset;
+#else
+            font_ptr = NULL;
+#endif
+#else
+            font_ptr = (uint8_t*)&hz_16x16[offset];
+#endif
             break;
         case 24:
-            font_ptr = (uint8_t*)&hz_24x24[ch];
+#if USE_CHINESE_FULL_LIB
+#if CHINESE_FULL_LIB_24_EN
+            font_ptr = (uint8_t*)(hz24) + offset;
+#else
+            font_ptr = NULL;
+#endif 
+#else
+            font_ptr = (uint8_t*)&hz_24x24[offset];
+#endif
             break;
-        case 32:
-            font_ptr = (uint8_t*)&hz_32x32[ch];
+        case 32: 
+#if USE_CHINESE_FULL_LIB
+#if CHINESE_FULL_LIB_32_EN
+            font_ptr = (uint8_t*)(hz32) + offset;
+#else
+            font_ptr = NULL;
+#endif
+#else
+            font_ptr = (uint8_t*)&hz_32x32[offset];
+#endif
             break;
         default:
             return;
+    }
+    
+    if (!font_ptr) {
+        return;
     }
     
     for (i = 0; i < size; i++) {
@@ -337,3 +403,51 @@ void lcd_show_chinese(uint16_t x, uint16_t y, char ch, uint16_t back_color, uint
     }
 }
 #endif /* USE_CHINESE_EN */
+
+#if USE_ASCII_EN || USE_CHINESE_EN
+
+#include <stdio.h>
+
+static uint32_t gb2312_calc_offset(char *code, uint8_t font_size)
+{
+    uint8_t qh, ql;
+    uint32_t offset;
+    uint8_t font_bytes;
+    
+    font_bytes = (font_size / 8 + ((font_size % 8) ? 1 : 0)) * font_size;
+    
+    qh = *code;
+    ql = *(code + 1);
+    
+    if (qh >= 0xA1 && qh <= 0xA9 && ql >=0xA1) {
+        offset = (94*(qh - 0xA1) + (ql - 0xA1)) * font_bytes;
+    } else if (qh >=0xB0 && qh <= 0xF7 && ql >=0xA1) {
+        offset = (94*(qh - 0xB0) + (ql - 0xA1) + 846) * font_bytes;
+    }
+    
+    return offset;
+}
+    
+void lcd_show_str(uint16_t x, uint16_t y, char *str, uint16_t back_color, uint16_t font_color, uint8_t font_size)
+{
+    uint16_t font_width;
+    uint16_t x_pos = x;
+    uint32_t offset;
+
+    while (*str) {
+        if (*str < 0x80) {
+            lcd_show_char(x_pos, y, *str, back_color, font_color, font_size);
+            font_width = font_size / 2;
+            x_pos += font_width;
+            str++;
+        } else {
+            offset = gb2312_calc_offset(str, font_size);
+            lcd_show_chinese(x_pos, y, offset, back_color, font_color, font_size);
+            font_width = font_size;
+            x_pos += font_width;
+            str += 2;
+        }
+        
+    }
+}
+#endif /* USE_ASCII_EN or USE_CHINESE_EN */

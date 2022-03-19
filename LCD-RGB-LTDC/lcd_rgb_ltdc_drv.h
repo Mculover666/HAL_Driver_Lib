@@ -23,18 +23,25 @@
 /**
  * @brief   whether use dma2d to transfer data to lcd framebuffer.
 */
-#define USE_DMA2D_EN        1
+#define USE_DMA2D_EN        0
 
 /**
  * @brief   whether enable ASCII char display.
 */
-#define USE_ASCII_EN        1
+#define USE_ASCII_EN        0
 
 /**
  * @brief   whether enable chinese char display.
 */
-#define USE_CHINESE_EN      1
+#define USE_CHINESE_EN      0
 
+/**
+ * @brief   whether enable chinese full library(GB2312).
+*/
+#define USE_CHINESE_FULL_LIB    0
+#define CHINESE_FULL_LIB_16_EN  1
+#define CHINESE_FULL_LIB_24_EN  0
+#define CHINESE_FULL_LIB_32_EN  0
 /**
  * @brief   color
  * @note    rgb565   
@@ -123,6 +130,18 @@ void lcd_draw_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t 
 */
 void lcd_fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
 
+
+/**
+ * @brief       Fill rect.
+ * @param[in]   x1      horizontal start position.
+ * @param[in]   y1      vertical start position.
+ * @param[in]   x2      horizontal end position.
+ * @param[in]   y2      vertical end position.
+ * @param[in]   color   pointer to color buffer.
+ * @return      None
+*/
+void lcd_fill_with_buffer(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t *color);
+
 #if USE_ASCII_EN
 /**
  * @brief       Show a ASCII char.
@@ -170,7 +189,7 @@ void lcd_show_str(uint16_t x, uint16_t y, char *str, uint16_t back_color, uint16
  * @return      None
  * @note        This function need hz library.
 */
-void lcd_show_chinese(uint16_t x, uint16_t y, char ch, uint16_t back_color, uint16_t font_color, uint8_t font_size);
+void lcd_show_chinese(uint16_t x, uint16_t y, uint32_t offset, uint16_t back_color, uint16_t font_color, uint8_t font_size);
 
 #endif /* USE_CHINESE_EN */
 
