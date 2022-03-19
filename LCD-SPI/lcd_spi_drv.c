@@ -407,13 +407,25 @@ void lcd_fill_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t 
 #else
     uint32_t size, i;
 
-    size = (x2 - x1) * (y2 - y1);
+    size = (x2 - x1 + 1) * (y2 - y1 + 1);
     
-    lcd_address_set(x1, y1, x2 - 1, y2 - 1);
+    lcd_address_set(x1, y1, x2, y2);
     for (i = 0; i < size; i++) {
         lcd_write_color(color);
     }
 #endif
+}
+
+void lcd_fill_with_buffer(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t *color)
+{
+    uint32_t size, i;
+
+    size = (x2 - x1 + 1) * (y2 - y1 + 1);
+    
+    lcd_address_set(x1, y1, x2, y2);
+    for (i = 0; i < size; i++) {
+        lcd_write_color(*color++);
+    }
 }
 
 void lcd_clear_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)

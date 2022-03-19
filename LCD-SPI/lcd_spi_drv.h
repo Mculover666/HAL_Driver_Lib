@@ -137,6 +137,15 @@ void lcd_draw_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t 
 void lcd_fill_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
 
 /**
+ * @brief   fill a rect with color buffer.
+ * @param   x1,y1   start address
+ * @param   x2,y2   end address
+ * @param   color   the pointer of color buffer
+ * @return  none
+ */
+void lcd_fill_with_buffer(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t *color);
+
+/**
  * @brief   clear a rect.
  * @param   x1,y1   rect start address
  * @param   x2,y2   rect end address
