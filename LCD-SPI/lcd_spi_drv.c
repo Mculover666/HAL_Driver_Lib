@@ -8,6 +8,7 @@
  *                      v2.1    add support for scroll function     mculover666    2021/5/18
  *                      v2.2    optimizing code style               mculover666    2021/5/19
  *                      v2.3    optimizing speed                    mculover666    2021/8/29
+ * 						v2.4    optimizing speed                    Yangyuanxin    2022/6/26
  */
 
 #include "lcd_spi_drv.h"
@@ -29,32 +30,34 @@ static void lcd_hard_reset(void)
     LCD_RST(1);
 }
 
-static void spi_write_bytes(uint8_t *data, uint16_t size)
+static void spi_write_multi_bytes(uint8_t *data, uint16_t size)
 {
     HAL_SPI_Transmit(&LCD_SPI_HANDLER, data, size, 1000);
+}
+
+static void spi_write_bytes(uint8_t data)
+{
+    *((uint8_t*)&LCD_SPI_HANDLER.Instance->DR) = data;
+    while(__HAL_SPI_GET_FLAG(&LCD_SPI_HANDLER, SPI_FLAG_TXE) != 1) {}
 }
 
 static void lcd_write_cmd(uint8_t cmd)
 {
     LCD_WR_RS(0);
-    spi_write_bytes(&cmd, 1);
+    spi_write_bytes(cmd);
 }
 
 static void lcd_write_data(uint8_t dat)
 {
     LCD_WR_RS(1);
-    spi_write_bytes(&dat, 1);
+    spi_write_bytes(dat);
 }
 
 static void lcd_write_color(const uint16_t color)
 {
-    uint8_t data[2] = {0};
-
-    data[0] = color >> 8;
-    data[1] = color;
-
     LCD_WR_RS(1);
-    spi_write_bytes(data, 2);
+    spi_write_bytes(color >> 8);
+    spi_write_bytes(color);
 }
 
 uint16_t rgb2hex_565(uint16_t r, uint16_t g, uint16_t b)
@@ -154,6 +157,8 @@ void lcd_init(void)
     /* LCD Hard Reset */
     lcd_hard_reset();
     HAL_Delay(120);
+	SPI_1LINE_TX(&hspi2);
+    __HAL_SPI_ENABLE(&hspi2);
 	
     /* Sleep Out */
     lcd_write_cmd(0x11);
@@ -203,7 +208,7 @@ void lcd_init(void)
 
     /* Frame Rate Control in Normal Mode */
     lcd_write_cmd(0xC6);
-    lcd_write_data(0x0F);	//60MHZ
+    lcd_write_data(0x01);	//111MHZ
 
     /* Power Control 1 */
     lcd_write_cmd(0xD0);
@@ -545,11 +550,11 @@ void lcd_show_image(uint16_t x, uint16_t y, uint16_t width, uint16_t height, con
 
     for (i = 0;i <= img_size / 65536; i++) {
         if (remain_size / 65536 >= 1) {
-            spi_write_bytes((uint8_t *)p, 65535);
+            spi_write_multi_bytes((uint8_t *)p, 65535);
             p += 65535;
             remain_size -= 65535;
         } else {
-            spi_write_bytes((uint8_t *)p, remain_size % 65535);
+            spi_write_multi_bytes((uint8_t *)p, remain_size % 65535);
         }
     }  
 }
