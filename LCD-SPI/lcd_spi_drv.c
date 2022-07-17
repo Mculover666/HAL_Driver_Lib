@@ -1,14 +1,16 @@
 /**
  * @Copyright 			(c) 2019,mculover666 All rights reserved	
- * @filename  			lcd_spi_drv.h
+ * @filename  			lcd_spi_drv.c
  * @breif				Drive ST7789 LCD based on spi interface
  * @changelog
  *            			v1.0    finish basic function               mculover666    2019/7/10
  *                      v2.0    add macro define to control build   mculover666    2019/7/13
  *                      v2.1    add support for scroll function     mculover666    2021/5/18
- *                      v2.2    optimizing code style               mculover666    2021/5/19
- *                      v2.3    optimizing speed                    mculover666    2021/8/29
- * 						v2.4    optimizing speed                    Yangyuanxin    2022/6/26
+ *                      v2.2    optimize code style                 mculover666    2021/5/19
+ *                      v2.3    optimize speed(remove buffer)       mculover666    2021/8/29
+ *                      V2.4    optimize lcd_draw_chinese_char      mculover666    2022/3/11
+ * 						v2.5    optimize speed(register send)       Yangyuanxin    2022/6/26
+ * 						v2.6    optimize port interface             mculover666    2022/7/17
  */
 
 #include "lcd_spi_drv.h"
@@ -22,42 +24,117 @@ static lcd_color_params_t s_lcd_color_params = {
     .foreground_color = WHITE
 };
 
+static int lcd_cs_port(int status)
+{
+//    if (status) {
+//        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET);
+//    } else {
+//        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_RESET);
+//    }
+    return 0;
+}
+
+static int lcd_blk_port(int status)
+{
+    if (status) {
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET);
+    } else {
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_RESET);
+    }
+    return 0;
+}
+
+static int lcd_rst_port(int status)
+{
+    if (status) {
+        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
+    } else {
+        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
+    }
+    return 0;
+}
+
+static int lcd_dc_port(int status)
+{
+    if (status) {
+        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6, GPIO_PIN_SET);
+    } else {
+        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6, GPIO_PIN_RESET);
+    }
+    return 0;
+}
+
+static int spi_init(void)
+{
+#if 0
+    SPI_1LINE_TX(&hspi2);
+    __HAL_SPI_ENABLE(&hspi2);
+#endif
+    return 0;
+}
+
+static int spi_write_byte(uint8_t data)
+{
+#if 0
+    // this method on stm32l4@80Mhz(240*240), -O3, -Otime, clear time is 30 ms.
+    // this method on stm32l4@80Mhz(320*240), -O3, -Otime, clear time is 55 ms.
+    while(!__HAL_SPI_GET_FLAG(&hspi2, SPI_FLAG_TXE));
+    *((__IO uint8_t*)&hspi2.Instance->DR) = data;
+#else
+    // this method on stm32l4@80Mhz(240*240), -O3, -Otime, clear time is 632 ms.
+    // this method on stm32l4@80Mhz(320*240), -O3, -Otime, clear time is 741 ms.
+    HAL_StatusTypeDef status;
+    status = HAL_SPI_Transmit(&hspi2, &data, 1, 1000);
+    return status == HAL_OK ? 0 : -1;
+#endif
+}
+
+static int spi_write_multi_bytes(uint8_t *data, uint16_t size)
+{
+    HAL_StatusTypeDef status;
+    status = HAL_SPI_Transmit(&hspi2, data, size, 1000);
+    return status == HAL_OK ? 0 : -1;
+}
+
+static lcd_spi_drv_t lcd_spi_drv = {
+    .cs  = lcd_cs_port,
+    .blk = lcd_blk_port,
+    .rst = lcd_rst_port,
+    
+    .dc  = lcd_dc_port,
+    
+    .init = spi_init,
+    .write_byte = spi_write_byte,
+    .write_multi_bytes = spi_write_multi_bytes
+};
+#define lcd (&lcd_spi_drv)
+
 static void lcd_hard_reset(void)
 {
-    LCD_PWR(0);
-    LCD_RST(0);
+    lcd->rst(0);
     HAL_Delay(100);
-    LCD_RST(1);
-}
-
-static void spi_write_multi_bytes(uint8_t *data, uint16_t size)
-{
-    HAL_SPI_Transmit(&LCD_SPI_HANDLER, data, size, 1000);
-}
-
-static void spi_write_bytes(uint8_t data)
-{
-    *((uint8_t*)&LCD_SPI_HANDLER.Instance->DR) = data;
-    while(__HAL_SPI_GET_FLAG(&LCD_SPI_HANDLER, SPI_FLAG_TXE) != 1) {}
+    lcd->rst(1);
 }
 
 static void lcd_write_cmd(uint8_t cmd)
 {
-    LCD_WR_RS(0);
-    spi_write_bytes(cmd);
+    lcd->dc(0);
+    lcd->write_byte(cmd);
 }
 
 static void lcd_write_data(uint8_t dat)
 {
-    LCD_WR_RS(1);
-    spi_write_bytes(dat);
+    lcd->dc(1);
+    lcd->write_byte(dat);
 }
 
 static void lcd_write_color(const uint16_t color)
 {
-    LCD_WR_RS(1);
-    spi_write_bytes(color >> 8);
-    spi_write_bytes(color);
+    // reduce flush time when loop.
+    //lcd->dc(1);
+    
+    lcd->write_byte(color >> 8);
+    lcd->write_byte(color);
 }
 
 uint16_t rgb2hex_565(uint16_t r, uint16_t g, uint16_t b)
@@ -74,6 +151,7 @@ uint16_t rgb2hex_565(uint16_t r, uint16_t g, uint16_t b)
 
 static void lcd_address_set(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
 {
+    lcd->cs(0);
     lcd_write_cmd(0x2a);
     lcd_write_data(x1 >> 8);
     lcd_write_data(x1);
@@ -87,16 +165,17 @@ static void lcd_address_set(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
     lcd_write_data(y2);
 
     lcd_write_cmd(0x2C);
+    lcd->cs(1);
 }
 
 void lcd_display_on(void)
 {
-    LCD_PWR(1);
+    lcd->blk(1);
 }
 
 void lcd_display_off(void)
 {
-    LCD_PWR(0);
+    lcd->blk(0);
 }
 
 void lcd_color_set(uint16_t back_color, uint16_t fore_color)
@@ -142,9 +221,12 @@ void lcd_clear(void)
     size = LCD_WIDTH * LCD_HEIGHT;
     
     lcd_address_set(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1);
+    lcd->cs(0);
+    lcd->dc(1);
     for (i = 0; i < size; i++) {
         lcd_write_color(color);
     }
+    lcd->cs(1);
 #endif
 }
 
@@ -153,12 +235,12 @@ void lcd_init(void)
     /* GPIO initialization code in main.c */
 
     /* SPI initialization code in main.c */
+    
+    spi_init();
 
     /* LCD Hard Reset */
     lcd_hard_reset();
     HAL_Delay(120);
-	SPI_1LINE_TX(&hspi2);
-    __HAL_SPI_ENABLE(&hspi2);
 	
     /* Sleep Out */
     lcd_write_cmd(0x11);
@@ -168,11 +250,21 @@ void lcd_init(void)
 
     /* Memory Data Access Control */
     lcd_write_cmd(0x36);
+#if LCD_DIRECTION == 0
     lcd_write_data(0x00);
+#elif LCD_DIRECTION == 1
+    lcd_write_data(0x60);
+#elif LCD_DIRECTION == 2
+    lcd_write_data(0xA0);
+#elif LCD_DIRECTION == 3
+    lcd_write_data(0xC0);
+#else
+#error "lcd screen direction error!"
+#endif
 
     /* RGB 5-6-5-bit  */
     lcd_write_cmd(0x3A);
-    lcd_write_data(0x65);
+    lcd_write_data(0x05);
 
     /* Porch Setting */
     lcd_write_cmd(0xB2);
@@ -254,19 +346,28 @@ void lcd_init(void)
     lcd_set_scroll_area(0, 240, 80);
 #endif
 
+#if USE_DISPLAY_INVERSION
     /* Display Inversion On */
     lcd_write_cmd(0x21);
     lcd_write_cmd(0x29);
+#else
+    /* Display Inversion Off */
+    lcd_write_cmd(0x20);
+    lcd_write_cmd(0x29);
+#endif
     
     lcd_clear();
 
-    LCD_PWR(1);
+    lcd_display_on();
 }
 
 void lcd_draw_point(uint16_t x, uint16_t y,uint16_t color)
 {
     lcd_address_set(x, y, x, y);
+    lcd->cs(0);
+    lcd->dc(1);
     lcd_write_color(color);
+    lcd->cs(1);
 }
 
 void lcd_draw_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
@@ -281,9 +382,12 @@ void lcd_draw_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t 
 	
     if (y1 == y2) {
         lcd_address_set(x1, y1, x2 - 1, y2);
+        lcd->cs(0);
+        lcd->dc(1);
         for (i = 0; i < x2 - x1; i++) {
             lcd_write_color(color);
         }
+        lcd->cs(1);
         return;
     } else {
         delta_x = x2 - x1;
@@ -415,9 +519,12 @@ void lcd_fill_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t 
     size = (x2 - x1 + 1) * (y2 - y1 + 1);
     
     lcd_address_set(x1, y1, x2, y2);
+    lcd->cs(0);
+    lcd->dc(1);
     for (i = 0; i < size; i++) {
         lcd_write_color(color);
     }
+    lcd->cs(1);
 #endif
 }
 
@@ -428,9 +535,12 @@ void lcd_fill_with_buffer(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, ui
     size = (x2 - x1 + 1) * (y2 - y1 + 1);
     
     lcd_address_set(x1, y1, x2, y2);
+    lcd->cs(0);
+    lcd->dc(1);
     for (i = 0; i < size; i++) {
         lcd_write_color(*color++);
     }
+    lcd->cs(1);
 }
 
 void lcd_clear_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
@@ -478,6 +588,8 @@ void lcd_draw_char(uint16_t x, uint16_t y, char ch, uint8_t font_size)
             return;
     }
     lcd_address_set(x, y, x+font_width-1, y+font_height-1);
+    lcd->cs(0);
+    lcd->dc(1);
     for (i = 0; i < font_total_bytes; i++) {
         temp = *(font_ptr + i);
         if (font_size == 24) {
@@ -492,7 +604,8 @@ void lcd_draw_char(uint16_t x, uint16_t y, char ch, uint8_t font_size)
             }
             temp <<= 1;
         }
-    } 
+    }
+    lcd->cs(1);
 }
 
 void lcd_draw_chinese_char(uint16_t x, uint16_t y, uint8_t font_width, uint8_t font_height, uint8_t *font_data)
@@ -512,6 +625,8 @@ void lcd_draw_chinese_char(uint16_t x, uint16_t y, uint8_t font_width, uint8_t f
     font_total_bytes = (font_width / 8 + ((font_width % 8) ? 1 : 0)) * font_height;
 
     lcd_address_set(x, y, x + font_width - 1, y + font_height - 1);
+    lcd->cs(0);
+    lcd->dc(1);
     for (i = 0; i < font_total_bytes; i++) {
         temp = *(font_data + i);
         for (j = 0; j < bit_width; j++) {
@@ -523,6 +638,7 @@ void lcd_draw_chinese_char(uint16_t x, uint16_t y, uint8_t font_width, uint8_t f
             temp <<= 1;
         }
     }
+    lcd->cs(1);
 }
 
 void lcd_draw_text(uint16_t x, uint16_t y, char* str, uint8_t font_size)
@@ -545,18 +661,18 @@ void lcd_show_image(uint16_t x, uint16_t y, uint16_t width, uint16_t height, con
     }
 				
     lcd_address_set(x, y, x + width - 1, y + height - 1);
-
-    LCD_WR_RS(1);
-
+    lcd->cs(0);
+    lcd->dc(1);
     for (i = 0;i <= img_size / 65536; i++) {
         if (remain_size / 65536 >= 1) {
-            spi_write_multi_bytes((uint8_t *)p, 65535);
+            lcd->write_multi_bytes((uint8_t *)p, 65535);
             p += 65535;
             remain_size -= 65535;
         } else {
-            spi_write_multi_bytes((uint8_t *)p, remain_size % 65535);
+            lcd->write_multi_bytes((uint8_t *)p, remain_size % 65535);
         }
-    }  
+    }
+    lcd->cs(1);
 }
 
 #if USE_VERTICAL_SCROLL

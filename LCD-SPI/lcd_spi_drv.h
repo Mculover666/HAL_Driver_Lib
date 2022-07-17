@@ -6,9 +6,11 @@
  *            			v1.0    finish basic function               mculover666    2019/7/10
  *                      v2.0    add macro define to control build   mculover666    2019/7/13
  *                      v2.1    add support for scroll function     mculover666    2021/5/18
- *                      v2.2    optimizing code style               mculover666    2021/5/19
- *                      v2.3    optimizing speed                    mculover666    2021/8/29
- *                      V2.4    optimizing lcd_draw_chinese_char    mculover666    2022/3/11
+ *                      v2.2    optimize code style                 mculover666    2021/5/19
+ *                      v2.3    optimize speed(remove buffer)       mculover666    2021/8/29
+ *                      V2.4    optimize lcd_draw_chinese_char      mculover666    2022/3/11
+ * 						v2.5    optimize speed(register send)       Yangyuanxin    2022/6/26
+ * 						v2.6    optimize port interface             mculover666    2022/7/17
  */
 
 #ifndef _LCD_SPI_DRV_H_
@@ -17,26 +19,23 @@
 #include "stm32l4xx_hal.h"
 #include "spi.h"
 
-#define	USE_ASCII_FONT_LIB			1   // Whether to enable character display
-#define USE_VERTICAL_SCROLL         0   // Whether to enable vertical scroll
-
+/* screen config */
 #define LCD_WIDTH		240
 #define LCD_HEIGHT		240
+#define LCD_DIRECTION   0               // 0: normal, 1: left 90, 2: 180, 3: right 90.
 
+/* feature config */
+#define	USE_ASCII_FONT_LIB			1   // Whether to enable character display
+#define USE_VERTICAL_SCROLL         0   // Whether to enable vertical scroll
+#define USE_DISPLAY_INVERSION       1   // Whether to enable display inversion
+
+/* chinese font interior config */
 #define CHINESE_FONT_BUF_MAX_SIZE_ONE_CHR    128
 
-#define LCD_PWR_Pin 		GPIO_PIN_15
-#define LCD_PWR_GPIO_Port 	GPIOB
-#define LCD_WR_RS_Pin 		GPIO_PIN_6
-#define LCD_WR_RS_GPIO_Port GPIOC
-#define LCD_RST_Pin 		GPIO_PIN_7
-#define LCD_RST_GPIO_Port 	GPIOC
-#define LCD_SPI_HANDLER     hspi2
-
-#define	LCD_PWR(n)		(n?HAL_GPIO_WritePin(LCD_PWR_GPIO_Port,LCD_PWR_Pin,GPIO_PIN_SET):HAL_GPIO_WritePin(LCD_PWR_GPIO_Port,LCD_PWR_Pin,GPIO_PIN_RESET))
-#define	LCD_WR_RS(n)	(n?HAL_GPIO_WritePin(LCD_WR_RS_GPIO_Port,LCD_WR_RS_Pin,GPIO_PIN_SET):HAL_GPIO_WritePin(LCD_WR_RS_GPIO_Port,LCD_WR_RS_Pin,GPIO_PIN_RESET))
-#define	LCD_RST(n)		(n?HAL_GPIO_WritePin(LCD_RST_GPIO_Port,LCD_RST_Pin,GPIO_PIN_SET):HAL_GPIO_WritePin(LCD_RST_GPIO_Port,LCD_RST_Pin,GPIO_PIN_RESET))
-
+/*
+    some useful color, rgb565 format.
+    of courcse, you can use rgb2hex_565 API.
+*/
 #define WHITE         0xFFFF	
 #define YELLOW        0xFFE0	
 #define BRRED 		  0XFC07
@@ -53,6 +52,19 @@ typedef struct lcd_color_params_st {
     uint16_t    background_color;
     uint16_t    foreground_color;
 } lcd_color_params_t;
+
+typedef struct lcd_spi_drv_st {
+    //the function to operate gpio.
+    int (*cs)(int status);
+    int (*blk)(int status);
+    int (*rst)(int status);
+    int (*dc)(int status);
+    
+    //the function to operate spi.
+    int (*init)(void);
+    int (*write_byte)(uint8_t data);
+    int (*write_multi_bytes)(uint8_t *data, uint16_t size);
+} lcd_spi_drv_t;
 
 /**
  * @brief	LCD Init.
