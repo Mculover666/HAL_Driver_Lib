@@ -1,16 +1,17 @@
 /**
- * @Copyright 			(c) 2019,mculover666 All rights reserved	
- * @filename  			lcd_spi_drv.c
- * @breif				Drive ST7789 LCD based on spi interface
+ * @Copyright   (c) 2019,mculover666 All rights reserved
+ * @filename    lcd_spi_drv.c
+ * @breif       Drive ST7789 LCD based on spi interface
  * @changelog
- *            			v1.0    finish basic function               mculover666    2019/7/10
- *                      v2.0    add macro define to control build   mculover666    2019/7/13
- *                      v2.1    add support for scroll function     mculover666    2021/5/18
- *                      v2.2    optimize code style                 mculover666    2021/5/19
- *                      v2.3    optimize speed(remove buffer)       mculover666    2021/8/29
- *                      V2.4    optimize lcd_draw_chinese_char      mculover666    2022/3/11
- * 						v2.5    optimize speed(register send)       Yangyuanxin    2022/6/26
- * 						v2.6    optimize port interface             mculover666    2022/7/17
+ *              v1.0    finish basic function                   mculover666     2019/7/10
+ *              v2.0    add macro define to control build       mculover666     2019/7/13
+ *              v2.1    add support for scroll function         mculover666     2021/5/18
+ *              v2.2    optimize code style                     mculover666     2021/5/19
+ *              v2.3    optimize speed(remove buffer)           mculover666     2021/8/29
+ *              V2.4    optimize lcd_draw_chinese_char          mculover666     2022/3/11
+ *              v2.5    optimize speed(register send)           Yangyuanxin     2022/6/26
+ *              v2.6    optimize port interface                 mculover666     2022/7/17
+ *              v2.7    add spi send with buffer(very useful)   mculover666     2022/7/18
  */
 
 #include "lcd_spi_drv.h"
@@ -23,6 +24,8 @@ static lcd_color_params_t s_lcd_color_params = {
     .background_color = BLACK,
     .foreground_color = WHITE
 };
+
+static uint8_t write_buf[SPI_WRITE_BUFFER_SIZE];
 
 static int lcd_cs_port(int status)
 {
@@ -64,9 +67,11 @@ static int lcd_dc_port(int status)
     return 0;
 }
 
+#define USE_REGISTER_METHOD     0
+
 static int spi_init(void)
 {
-#if 0
+#if USE_REGISTER_METHOD
     SPI_1LINE_TX(&hspi2);
     __HAL_SPI_ENABLE(&hspi2);
 #endif
@@ -75,13 +80,14 @@ static int spi_init(void)
 
 static int spi_write_byte(uint8_t data)
 {
-#if 0
+#if USE_REGISTER_METHOD
     // this method on stm32l4@80Mhz(240*240), -O3, -Otime, clear time is 30 ms.
     // this method on stm32l4@80Mhz(320*240), -O3, -Otime, clear time is 55 ms.
     while(!__HAL_SPI_GET_FLAG(&hspi2, SPI_FLAG_TXE));
     *((__IO uint8_t*)&hspi2.Instance->DR) = data;
 #else
     // this method on stm32l4@80Mhz(240*240), -O3, -Otime, clear time is 632 ms.
+    // this method on stm32l5@110Mhz(240*240), -O3, spi send with buffer, clear time is 75 ms.
     // this method on stm32l4@80Mhz(320*240), -O3, -Otime, clear time is 741 ms.
     HAL_StatusTypeDef status;
     status = HAL_SPI_Transmit(&hspi2, &data, 1, 1000);
@@ -130,17 +136,23 @@ static void lcd_write_data(uint8_t dat)
 
 static void lcd_write_color(const uint16_t color)
 {
-    // reduce flush time when loop.
-    //lcd->dc(1);
-    
+#if USE_REGISTER_METHOD
     lcd->write_byte(color >> 8);
     lcd->write_byte(color);
+#else
+    uint8_t data[2];
+
+    data[0] = color >> 8;
+    data[1] = color;
+
+    lcd->write_multi_bytes(data, 2);
+#endif
 }
 
 uint16_t rgb2hex_565(uint16_t r, uint16_t g, uint16_t b)
 {
     uint16_t color;
-    
+
     r = (r & 0x1F) << 11;
     g = (g & 0x3F) << 5;
     b = b & 0x1F;
@@ -170,12 +182,12 @@ static void lcd_address_set(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
 
 void lcd_display_on(void)
 {
-    lcd->blk(1);
+    lcd->blk(0);
 }
 
 void lcd_display_off(void)
 {
-    lcd->blk(0);
+    lcd->blk(1);
 }
 
 void lcd_color_set(uint16_t back_color, uint16_t fore_color)
@@ -184,64 +196,18 @@ void lcd_color_set(uint16_t back_color, uint16_t fore_color)
     s_lcd_color_params.foreground_color = fore_color;
 }
 
-void lcd_clear(void)
-{
-#if 0
-    uint16_t i, j;
-    uint8_t data[2] = {0};
-    uint16_t remain_size;
-    uint16_t color = s_lcd_color_params.background_color;
-
-    data[0] = color >> 8;
-    data[1] = color;
-
-    lcd_address_set(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1);
-
-    for(j = 0; j < LCD_BUFFER_SIZE / 2; j++)
-    {
-        lcd_buf[j * 2] =  data[0];
-        lcd_buf[j * 2 + 1] =  data[1];
-    }
-
-    LCD_WR_RS(1);
-
-    for(i = 0; i < (LCD_TOTAL_BUF_SIZE / LCD_BUFFER_SIZE); i++)
-    {
-        spi_write_bytes(lcd_buf, LCD_BUFFER_SIZE);
-    }
-    
-    remain_size = LCD_TOTAL_BUF_SIZE % LCD_BUFFER_SIZE;
-    if (remain_size) {
-        spi_write_bytes(lcd_buf, remain_size);
-    }
-#else
-    uint32_t size, i;
-    uint16_t color = s_lcd_color_params.background_color;
-
-    size = LCD_WIDTH * LCD_HEIGHT;
-    
-    lcd_address_set(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1);
-    lcd->cs(0);
-    lcd->dc(1);
-    for (i = 0; i < size; i++) {
-        lcd_write_color(color);
-    }
-    lcd->cs(1);
-#endif
-}
-
 void lcd_init(void)
 {
     /* GPIO initialization code in main.c */
 
     /* SPI initialization code in main.c */
-    
+
     spi_init();
 
     /* LCD Hard Reset */
     lcd_hard_reset();
     HAL_Delay(120);
-	
+
     /* Sleep Out */
     lcd_write_cmd(0x11);
 
@@ -340,7 +306,7 @@ void lcd_init(void)
     lcd_write_data(0x1F);
     lcd_write_data(0x20);
     lcd_write_data(0x23);
-    
+
 #if USE_VERTICAL_SCROLL
     /* Defign Scroll Area */
     lcd_set_scroll_area(0, 240, 80);
@@ -355,7 +321,7 @@ void lcd_init(void)
     lcd_write_cmd(0x20);
     lcd_write_cmd(0x29);
 #endif
-    
+
     lcd_clear();
 
     lcd_display_on();
@@ -379,7 +345,7 @@ void lcd_draw_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t 
     uint16_t    t = 0;
     uint16_t	x = 0, y = 0;
     uint16_t 	x_temp = 0, y_temp = 0;
-	
+
     if (y1 == y2) {
         lcd_address_set(x1, y1, x2 - 1, y2);
         lcd->cs(0);
@@ -400,7 +366,7 @@ void lcd_draw_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t 
             incx = -1;
             delta_x = -delta_x;
         }
-        
+
         if (delta_y > 0) {
             incy = 1;
         } else if (delta_y == 0) {
@@ -408,21 +374,21 @@ void lcd_draw_line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t 
         } else {
             incy = -1;
             delta_y = -delta_y;
-        }			
-        
+        }
+
         if (delta_x > delta_y) {
             distance = delta_x;
         } else {
             distance = delta_y;
         }
-        
+
         x = x1;
         y = y1;
         for (t = 0; t <= distance + 1;t++) {
             lcd_draw_point(x, y, color);
-            x_temp += delta_x;	
+            x_temp += delta_x;
             if (x_temp > distance) {
-                x_temp -= distance;		
+                x_temp -= distance;
                 x += incx;
             }
             y_temp += delta_y;
@@ -448,13 +414,13 @@ void lcd_draw_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t 
 
 void lcd_draw_circle(uint16_t x, uint16_t y, uint16_t r, uint16_t color)
 {
-	int16_t a = 0, b = r;
+    int16_t a = 0, b = r;
     int16_t d = 3 - (r << 1);
-		
+
     if (x - r < 0 || x + r > LCD_WIDTH || y - r < 0 || y + r > LCD_HEIGHT) {
-		return;
+        return;
     }
-		
+
     while(a <= b) {
         lcd_draw_point(x - b, y - a, color);
         lcd_draw_point(x + b, y - a, color);
@@ -468,7 +434,7 @@ void lcd_draw_circle(uint16_t x, uint16_t y, uint16_t r, uint16_t color)
         a++;
 
         if (d < 0) {
-			d += 4 * a + 6;
+            d += 4 * a + 6;
         } else {
             d += 10 + 4 * (a - b);
             b--;
@@ -480,45 +446,38 @@ void lcd_draw_circle(uint16_t x, uint16_t y, uint16_t r, uint16_t color)
 
 void lcd_fill_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
 {
-#if 0
-    uint16_t i = 0;
-    uint32_t size = 0, size_remain = 0;
+#if USE_SPI_WRITE_BUF
+    uint16_t i, j;
+    uint8_t data[2] = {0};
+    uint32_t size, remain_size;
 
     size = (x2 - x1 + 1) * (y2 - y1 + 1) * 2;
 
-    if (size > LCD_BUFFER_SIZE) {
-        size_remain = size - LCD_BUFFER_SIZE;
-        size = LCD_BUFFER_SIZE;
+    data[0] = color >> 8;
+    data[1] = color;
+
+    for (j = 0; j < SPI_WRITE_BUFFER_SIZE / 2; j++) {
+        write_buf[j * 2] =  data[0];
+        write_buf[j * 2 + 1] =  data[1];
     }
 
-    lcd_address_set(x1, y1, x2, y2);
-    LCD_WR_RS(1);
-
-    while (1) {
-        for (i = 0; i < size / 2; i++) {
-            lcd_buf[2 * i] = color >> 8;
-            lcd_buf[2 * i + 1] = color;
-        }
-        
-        spi_write_bytes(lcd_buf, size);
-
-        if (size_remain == 0) {
-            break;
-        }
-
-        if (size_remain > LCD_BUFFER_SIZE) {
-            size_remain = size_remain - LCD_BUFFER_SIZE;
-        } else {
-            size = size_remain;
-            size_remain = 0;
-        }
+    lcd_address_set(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1);
+    lcd->cs(0);
+    lcd->dc(1);
+    for (i = 0; i < (size / SPI_WRITE_BUFFER_SIZE); i++) {
+        lcd->write_multi_bytes(write_buf, SPI_WRITE_BUFFER_SIZE);
     }
+    remain_size = size % SPI_WRITE_BUFFER_SIZE;
+    if (remain_size) {
+        lcd->write_multi_bytes(write_buf, SPI_WRITE_BUFFER_SIZE);
+    }
+    lcd->cs(1);
 #else
     uint32_t size, i;
 
-    size = (x2 - x1 + 1) * (y2 - y1 + 1);
-    
-    lcd_address_set(x1, y1, x2, y2);
+    size = (x2 - x1 + 1) * (y2 - y1 + 1) * 2;
+
+    lcd_address_set(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1);
     lcd->cs(0);
     lcd->dc(1);
     for (i = 0; i < size; i++) {
@@ -533,7 +492,7 @@ void lcd_fill_with_buffer(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, ui
     uint32_t size, i;
 
     size = (x2 - x1 + 1) * (y2 - y1 + 1);
-    
+
     lcd_address_set(x1, y1, x2, y2);
     lcd->cs(0);
     lcd->dc(1);
@@ -543,10 +502,17 @@ void lcd_fill_with_buffer(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, ui
     lcd->cs(1);
 }
 
+void lcd_clear(void)
+{
+    uint16_t back_color = s_lcd_color_params.background_color;
+
+    lcd_fill_rect(0, 0, LCD_WIDTH -1, LCD_HEIGHT - 1, back_color);
+}
+
 void lcd_clear_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
 {
     uint16_t back_color = s_lcd_color_params.background_color;
-    
+
     lcd_fill_rect(x1, y1, x2, y2, back_color);
 }
 
@@ -557,11 +523,11 @@ void lcd_draw_char(uint16_t x, uint16_t y, char ch, uint8_t font_size)
     uint8_t *font_ptr;
     uint8_t bit_width, temp;
     uint16_t back_color, fore_color;
-	
+
     if((x > (LCD_WIDTH - font_size / 2)) || (y > (LCD_HEIGHT - font_size)))	{
         return;
     }
-	
+
     font_width = font_size / 2;
     font_height = font_size;
     font_total_bytes = (font_width / 8 + ((font_width % 8) ? 1 : 0)) * font_height;
@@ -600,7 +566,7 @@ void lcd_draw_char(uint16_t x, uint16_t y, char ch, uint8_t font_size)
                 lcd_write_color(fore_color);
             } else {
                 lcd_write_color(back_color);
-               
+
             }
             temp <<= 1;
         }
@@ -614,11 +580,11 @@ void lcd_draw_chinese_char(uint16_t x, uint16_t y, uint8_t font_width, uint8_t f
     uint8_t bit_width, temp;
     uint16_t font_total_bytes;
     uint16_t back_color, fore_color;
-	
+
     if ((x > (LCD_WIDTH - font_width)) || (y > (LCD_HEIGHT - font_height)))	{
         return;
     }
-	
+
     bit_width = 8;
     back_color = s_lcd_color_params.background_color;
     fore_color = s_lcd_color_params.foreground_color;
@@ -643,23 +609,23 @@ void lcd_draw_chinese_char(uint16_t x, uint16_t y, uint8_t font_width, uint8_t f
 
 void lcd_draw_text(uint16_t x, uint16_t y, char* str, uint8_t font_size)
 {
-	while ((*str <= '~') && (*str >= ' ')) {
+    while ((*str <= '~') && (*str >= ' ')) {
         lcd_draw_char(x, y, *str, font_size);
         x += font_size / 2;
         str++;
-	}
+    }
 }
 
 void lcd_show_image(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint8_t *p)
 {
-	uint32_t img_size = width * height * 2;
-	uint32_t remain_size = img_size;
-	uint8_t i = 0;
-	
+    uint32_t img_size = width * height * 2;
+    uint32_t remain_size = img_size;
+    uint8_t i = 0;
+
     if(x + width > LCD_WIDTH || y + height > LCD_HEIGHT) {
         return;
     }
-				
+
     lcd_address_set(x, y, x + width - 1, y + height - 1);
     lcd->cs(0);
     lcd->dc(1);
@@ -684,22 +650,22 @@ void lcd_show_image(uint16_t x, uint16_t y, uint16_t width, uint16_t height, con
  * @param   bta    bottom fixed area
  * @return  errcode
  * @retval  0      success
- * @retval  -1     fail 
+ * @retval  -1     fail
  */
 int lcd_set_scroll_area(uint16_t tfa, uint16_t vsa, uint16_t bta)
 {
     if (tfa + vsa + bta != 320) {
         return -1;
     }
-    
+
     lcd_write_cmd(0x33);
     lcd_write_data(tfa >> 8);
     lcd_write_data(tfa);
     lcd_write_data(vsa >> 8);
-    lcd_write_data(vsa);    
+    lcd_write_data(vsa);
     lcd_write_data(bta >> 8);
     lcd_write_data(bta);
-    
+
     return 0;
 }
 

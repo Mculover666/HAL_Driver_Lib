@@ -67,17 +67,9 @@ lcd_show_str(70,240-24,"Starting...",WHITE,BLUE,24);
 
 ## 刷屏示例
 ```c
-while (1) {
-    lcd_clear(WHITE);
-    lcd_clear(YELLOW);
-    lcd_clear(BRRED);
-    lcd_clear(PINK);
-    lcd_clear(RED);
-    lcd_clear(BROWN);
-    lcd_clear(GRAY);
-    lcd_clear(GBLUE);
-    lcd_clear(GREEN);
-    lcd_clear(BLUE);
-    lcd_clear(BLACK);
-}
+start_time = HAL_GetTick();
+lcd_color_set(GREEN, WHITE);
+lcd_clear();
+end_time = HAL_GetTick();
+printf("clear time is %d ms\r\n", end_time - start_time);
 ```

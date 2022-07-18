@@ -1,16 +1,17 @@
 /**
- * @Copyright 			(c) 2019,mculover666 All rights reserved	
- * @filename  			lcd_spi_drv.h
- * @breif				Drive ST7789 LCD based on spi interface
+ * @Copyright   (c) 2019,mculover666 All rights reserved
+ * @filename    lcd_spi_drv.c
+ * @breif       Drive ST7789 LCD based on spi interface
  * @changelog
- *            			v1.0    finish basic function               mculover666    2019/7/10
- *                      v2.0    add macro define to control build   mculover666    2019/7/13
- *                      v2.1    add support for scroll function     mculover666    2021/5/18
- *                      v2.2    optimize code style                 mculover666    2021/5/19
- *                      v2.3    optimize speed(remove buffer)       mculover666    2021/8/29
- *                      V2.4    optimize lcd_draw_chinese_char      mculover666    2022/3/11
- * 						v2.5    optimize speed(register send)       Yangyuanxin    2022/6/26
- * 						v2.6    optimize port interface             mculover666    2022/7/17
+ *              v1.0    finish basic function                   mculover666     2019/7/10
+ *              v2.0    add macro define to control build       mculover666     2019/7/13
+ *              v2.1    add support for scroll function         mculover666     2021/5/18
+ *              v2.2    optimize code style                     mculover666     2021/5/19
+ *              v2.3    optimize speed(remove buffer)           mculover666     2021/8/29
+ *              V2.4    optimize lcd_draw_chinese_char          mculover666     2022/3/11
+ *              v2.5    optimize speed(register send)           Yangyuanxin     2022/6/26
+ *              v2.6    optimize port interface                 mculover666     2022/7/17
+ *              v2.7    add spi send with buffer(very useful)   mculover666     2022/7/18
  */
 
 #ifndef _LCD_SPI_DRV_H_
@@ -20,32 +21,37 @@
 #include "spi.h"
 
 /* screen config */
-#define LCD_WIDTH		240
-#define LCD_HEIGHT		240
+#define LCD_WIDTH       240
+#define LCD_HEIGHT      240
 #define LCD_DIRECTION   0               // 0: normal, 1: left 90, 2: 180, 3: right 90.
 
 /* feature config */
-#define	USE_ASCII_FONT_LIB			1   // Whether to enable character display
+#define	USE_ASCII_FONT_LIB          1   // Whether to enable character display
 #define USE_VERTICAL_SCROLL         0   // Whether to enable vertical scroll
 #define USE_DISPLAY_INVERSION       1   // Whether to enable display inversion
+#define USE_SPI_WRITE_BUF           1   // Whether to enable spi write through buffer
 
 /* chinese font interior config */
 #define CHINESE_FONT_BUF_MAX_SIZE_ONE_CHR    128
+
+#if USE_SPI_WRITE_BUF
+#define SPI_WRITE_BUFFER_SIZE 128
+#endif
 
 /*
     some useful color, rgb565 format.
     of courcse, you can use rgb2hex_565 API.
 */
-#define WHITE         0xFFFF	
-#define YELLOW        0xFFE0	
+#define WHITE         0xFFFF
+#define YELLOW        0xFFE0
 #define BRRED 		  0XFC07
-#define PINK          0XF81F	
-#define RED           0xF800	
-#define BROWN 		  0XBC40    
-#define GRAY  		  0X8430    
-#define GBLUE		  0X07FF	
-#define GREEN         0x07E0	
-#define BLUE          0x001F   
+#define PINK          0XF81F
+#define RED           0xF800
+#define BROWN 		  0XBC40
+#define GRAY  		  0X8430
+#define GBLUE		  0X07FF
+#define GREEN         0x07E0
+#define BLUE          0x001F
 #define BLACK         0x0000
 
 typedef struct lcd_color_params_st {
@@ -59,7 +65,7 @@ typedef struct lcd_spi_drv_st {
     int (*blk)(int status);
     int (*rst)(int status);
     int (*dc)(int status);
-    
+
     //the function to operate spi.
     int (*init)(void);
     int (*write_byte)(uint8_t data);
@@ -94,7 +100,7 @@ void lcd_display_off(void);
  * @param   b   GREEN value of color(0 - 63)
  * @return  hex value of color
  * @note    color format: rgb 565
- * 
+ *
 */
 uint16_t rgb2hex_565(uint16_t r, uint16_t g, uint16_t b);
 
@@ -105,13 +111,6 @@ uint16_t rgb2hex_565(uint16_t r, uint16_t g, uint16_t b);
  * @return  none
  */
 void lcd_color_set(uint16_t back_color, uint16_t fore_color);
-
-/**
- * @brief	clear LCD.
- * @param   none
- * @return  none
- */
-void lcd_clear(void);
 
 /**
  * @brief   draw a point with color.
@@ -156,6 +155,13 @@ void lcd_fill_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t 
  * @return  none
  */
 void lcd_fill_with_buffer(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t *color);
+
+/**
+ * @brief	clear LCD.
+ * @param   none
+ * @return  none
+ */
+void lcd_clear(void);
 
 /**
  * @brief   clear a rect.
