@@ -12,17 +12,22 @@
  *              v2.5    optimize speed(register send)           Yangyuanxin     2022/6/26
  *              v2.6    optimize port interface                 mculover666     2022/7/17
  *              v2.7    add spi send with buffer(very useful)   mculover666     2022/7/18
+ *              v2.8    port on esp-idf platform            	mculover666    	2023/4/8
  */
+
 
 #ifndef _LCD_SPI_DRV_H_
 #define _LCD_SPI_DRV_H_
 
-#include "stm32l4xx_hal.h"
-#include "spi.h"
+#include <stdint.h>
+
+/* platform config */
+#define STM32_PLATFORM
+//#define ESP32_PLATFORM
 
 /* screen config */
-#define LCD_WIDTH       240
-#define LCD_HEIGHT      240
+#define LCD_WIDTH		240
+#define LCD_HEIGHT		240
 #define LCD_DIRECTION   0               // 0: normal, 1: left 90, 2: 180, 3: right 90.
 
 /* feature config */
@@ -33,6 +38,8 @@
 
 /* chinese font interior config */
 #define CHINESE_FONT_BUF_MAX_SIZE_ONE_CHR    128
+
+#define USE_REGISTER_METHOD         0
 
 #if USE_SPI_WRITE_BUF
 #define SPI_WRITE_BUFFER_SIZE 128
@@ -70,6 +77,9 @@ typedef struct lcd_spi_drv_st {
     int (*init)(void);
     int (*write_byte)(uint8_t data);
     int (*write_multi_bytes)(uint8_t *data, uint16_t size);
+
+    ///the function to delay ms.
+    void (*delay)(uint32_t ms);
 } lcd_spi_drv_t;
 
 /**

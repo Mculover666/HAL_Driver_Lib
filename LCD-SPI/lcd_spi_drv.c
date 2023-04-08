@@ -12,20 +12,182 @@
  *              v2.5    optimize speed(register send)           Yangyuanxin     2022/6/26
  *              v2.6    optimize port interface                 mculover666     2022/7/17
  *              v2.7    add spi send with buffer(very useful)   mculover666     2022/7/18
+ *              v2.8    port on esp-idf platform            	mculover666    	2023/4/8
  */
 
 #include "lcd_spi_drv.h"
+
+#ifdef ESP32_PLATFORM
+#include <string.h>
+#include "driver/spi_master.h"
+#include "driver/gpio.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#else
+#include "stm32l4xx_hal.h"
+#include "spi.h"
+#endif
 
 #if USE_ASCII_FONT_LIB
 #include "font.h"
 #endif /* USE_ASCII_FONT_LIB */
 
+#ifdef CONFIG_IDF_TARGET_ESP32
+#define LCD_HOST    HSPI_HOST
+
+#define PIN_NUM_MISO 25
+#define PIN_NUM_MOSI 23
+#define PIN_NUM_CLK  19
+#define PIN_NUM_CS   22
+
+#define PIN_NUM_DC   21
+#define PIN_NUM_RST  18
+#define PIN_NUM_BCKL 5
+#elif defined CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3
+#define LCD_HOST    SPI2_HOST
+
+#define PIN_NUM_MISO 37
+#define PIN_NUM_MOSI 35
+#define PIN_NUM_CLK  36
+#define PIN_NUM_CS   45
+
+#define PIN_NUM_DC   4
+#define PIN_NUM_RST  5
+#define PIN_NUM_BCKL 6
+#elif defined CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C2
+#define LCD_HOST    SPI2_HOST
+
+#define PIN_NUM_MISO 2
+#define PIN_NUM_MOSI 7
+#define PIN_NUM_CLK  6
+#define PIN_NUM_CS   10
+#define PIN_NUM_DC   8
+#define PIN_NUM_RST  4
+#define PIN_NUM_BCKL 5
+#endif
+
+#if USE_SPI_WRITE_BUF
+static uint8_t write_buf[SPI_WRITE_BUFFER_SIZE];
+#endif
+
 static lcd_color_params_t s_lcd_color_params = {
-    .background_color = BLACK,
-    .foreground_color = WHITE
+    .background_color = WHITE,
+    .foreground_color = BLACK
 };
 
-static uint8_t write_buf[SPI_WRITE_BUFFER_SIZE];
+#ifdef ESP32_PLATFORM
+
+static spi_device_handle_t spi;
+
+static int lcd_cs_port(int status)
+{
+    // if (status) {
+    //     gpio_set_level(PIN_NUM_CS, 1);
+    // } else {
+    //     gpio_set_level(PIN_NUM_CS, 0);
+    // }
+    return 0;
+}
+
+static int lcd_blk_port(int status)
+{
+    if (status) {
+        gpio_set_level(PIN_NUM_BCKL, 1);
+    } else {
+        gpio_set_level(PIN_NUM_BCKL, 0);
+    }
+    return 0;
+}
+
+static int lcd_rst_port(int status)
+{
+    if (status) {
+        gpio_set_level(PIN_NUM_RST, 1);
+    } else {
+        gpio_set_level(PIN_NUM_RST, 0);
+    }
+    return 0;
+}
+
+static int lcd_dc_port(int status)
+{
+    if (status) {
+        gpio_set_level(PIN_NUM_DC, 1);
+    } else {
+        gpio_set_level(PIN_NUM_DC, 0);
+    }
+    return 0;
+}
+
+static int spi_init(void)
+{
+    gpio_config_t io_conf = {};
+    esp_err_t ret;
+
+    spi_bus_config_t buscfg={
+        .miso_io_num = PIN_NUM_MISO,
+        .mosi_io_num = PIN_NUM_MOSI,
+        .sclk_io_num = PIN_NUM_CLK,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+    };
+
+    spi_device_interface_config_t devcfg = {
+        .clock_speed_hz=10*1000*1000,
+        .mode = 3,
+        .spics_io_num = -1,
+        .queue_size = 1,
+    };
+
+    //Initialize the lcd gpio
+    io_conf.pin_bit_mask = ((1ULL<<PIN_NUM_DC) | (1ULL<<PIN_NUM_RST) | (1ULL<<PIN_NUM_BCKL));
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.pull_up_en = true;
+    gpio_config(&io_conf);
+
+    //Initialize the SPI bus
+    ret = spi_bus_initialize(LCD_HOST, &buscfg, SPI_DMA_CH_AUTO);
+    ESP_ERROR_CHECK(ret);
+
+    //Attach the LCD to the SPI bus
+    ret = spi_bus_add_device(LCD_HOST, &devcfg, &spi);
+    ESP_ERROR_CHECK(ret);
+
+    return 0;
+}
+
+static int spi_write_byte(uint8_t data)
+{
+    esp_err_t ret;
+    spi_transaction_t t;
+
+    memset(&t, 0, sizeof(t));
+    t.length = 8;
+    t.tx_buffer = &data;
+    ret = spi_device_polling_transmit(spi, &t);  //Transmit!
+    assert(ret==ESP_OK);
+    return 0;
+}
+
+static int spi_write_multi_bytes(uint8_t *data, uint16_t size)
+{
+    esp_err_t ret;
+    spi_transaction_t t;
+
+    memset(&t, 0, sizeof(t));
+    t.length = 8 * size;
+    t.tx_buffer = data;
+    ret = spi_device_polling_transmit(spi, &t);
+    assert(ret==ESP_OK);
+    return 0;
+}
+
+void lcd_delay_ms(uint32_t ms)
+{
+    vTaskDelay(ms / portTICK_PERIOD_MS);
+}
+
+#else
 
 static int lcd_cs_port(int status)
 {
@@ -67,7 +229,7 @@ static int lcd_dc_port(int status)
     return 0;
 }
 
-#define USE_REGISTER_METHOD     0
+
 
 static int spi_init(void)
 {
@@ -102,23 +264,31 @@ static int spi_write_multi_bytes(uint8_t *data, uint16_t size)
     return status == HAL_OK ? 0 : -1;
 }
 
+void lcd_delay_ms(uint32_t ms)
+{
+    HAL_Delay(ms);
+}
+
+#endif
+
 static lcd_spi_drv_t lcd_spi_drv = {
     .cs  = lcd_cs_port,
     .blk = lcd_blk_port,
     .rst = lcd_rst_port,
-    
     .dc  = lcd_dc_port,
-    
+
     .init = spi_init,
     .write_byte = spi_write_byte,
-    .write_multi_bytes = spi_write_multi_bytes
+    .write_multi_bytes = spi_write_multi_bytes,
+
+    .delay = lcd_delay_ms,
 };
 #define lcd (&lcd_spi_drv)
 
 static void lcd_hard_reset(void)
 {
     lcd->rst(0);
-    HAL_Delay(100);
+    lcd->delay(100);
     lcd->rst(1);
 }
 
@@ -182,12 +352,12 @@ static void lcd_address_set(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
 
 void lcd_display_on(void)
 {
-    lcd->blk(0);
+    lcd->blk(1);
 }
 
 void lcd_display_off(void)
 {
-    lcd->blk(1);
+    lcd->blk(0);
 }
 
 void lcd_color_set(uint16_t back_color, uint16_t fore_color)
@@ -196,23 +366,24 @@ void lcd_color_set(uint16_t back_color, uint16_t fore_color)
     s_lcd_color_params.foreground_color = fore_color;
 }
 
+
 void lcd_init(void)
 {
     /* GPIO initialization code in main.c */
 
     /* SPI initialization code in main.c */
 
-    spi_init();
+    lcd->init();
 
     /* LCD Hard Reset */
     lcd_hard_reset();
-    HAL_Delay(120);
+    lcd->delay(120);
 
     /* Sleep Out */
     lcd_write_cmd(0x11);
 
     /* wait for power stability */
-    HAL_Delay(120);
+    lcd->delay(120);
 
     /* Memory Data Access Control */
     lcd_write_cmd(0x36);
@@ -538,17 +709,17 @@ void lcd_draw_char(uint16_t x, uint16_t y, char ch, uint8_t font_size)
     switch (font_size) {
         case 12:
             bit_width = 6;
-            font_ptr = (uint8_t*)&asc2_1206[ch];
+            font_ptr = (uint8_t*)&asc2_1206[0] + ch;
         case 16:
             bit_width = 8;
-            font_ptr = (uint8_t*)&asc2_1608[ch];
+            font_ptr = (uint8_t*)&asc2_1608[0] + ch;
             break;
         case 24:
-            font_ptr = (uint8_t*)&asc2_2412[ch];
+            font_ptr = (uint8_t*)&asc2_2412[0] + ch;
             break;
         case 32:
             bit_width = 8;
-            font_ptr = (uint8_t*)&asc2_3216[ch];
+            font_ptr = (uint8_t*)&asc2_3216[0] + ch;
             break;
         default:
             return;
