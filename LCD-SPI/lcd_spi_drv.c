@@ -709,17 +709,17 @@ void lcd_draw_char(uint16_t x, uint16_t y, char ch, uint8_t font_size)
     switch (font_size) {
         case 12:
             bit_width = 6;
-            font_ptr = (uint8_t*)&asc2_1206[0] + ch;
+            font_ptr = (uint8_t*)&asc2_1206[0] + ch * 12;
         case 16:
             bit_width = 8;
-            font_ptr = (uint8_t*)&asc2_1608[0] + ch;
+            font_ptr = (uint8_t*)&asc2_1608[0] + ch * 16;
             break;
         case 24:
-            font_ptr = (uint8_t*)&asc2_2412[0] + ch;
+            font_ptr = (uint8_t*)&asc2_2412[0] + ch * 24;
             break;
         case 32:
             bit_width = 8;
-            font_ptr = (uint8_t*)&asc2_3216[0] + ch;
+            font_ptr = (uint8_t*)&asc2_3216[0] + ch * 32;
             break;
         default:
             return;
